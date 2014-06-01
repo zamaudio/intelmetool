@@ -83,7 +83,14 @@ int main(void)
 	name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), 
 		PCI_LOOKUP_DEVICE, sb->vendor_id, sb->device_id);
 	printf("Southbridge: %s\n", name);
-
+	if ((sb->vendor_id == 0x8086) && (((sb->device_id & 0x1e00) == 0x1e00)
+			|| ((sb->device_id & 0x1e00) == 0x1c00))) {
+		printf("Chipset supported and has ME\n");
+	} else {
+		printf("Chipset unsupported, exiting\n");
+		pci_cleanup(pacc);
+		exit(1);
+	}
 	/* Enable MEI */
 	rcba_phys = pci_read_long(sb, 0xf0) & 0xfffffffe;
 	rcba = map_physical(rcba_phys, size);
@@ -92,7 +99,7 @@ int main(void)
 	if (fd2 & 0x2) {
 		printf("MEI was hidden on PCI, now unlocked\n");
 	} else {
-		printf("No MEI hidden on PCI, exiting\n");
+		printf("MEI not hidden on PCI, exiting\n");
 		pci_cleanup(pacc);
 		munmap(&rcba, size);
 		exit(1);
@@ -148,7 +155,6 @@ int main(void)
 		printf("\nME has a broken implementation on your board with this BIOS\n");
 	}
 
-	printf("For more information:  'sudo lspci -H1 -nnvvxxx'\n");
 	printf("Re-hiding MEI device...");
 	fd2 = *(uint32_t *)(rcba + FD2);
 	*(uint32_t *)(rcba + FD2) = fd2 & 0x2;
