@@ -70,7 +70,8 @@ int main(void)
 	volatile uint8_t *rcba;
 	uint32_t rcba_phys;
 	volatile uint8_t *pciconfigbase;
-	uint32_t fd2;	
+	uint32_t fd2;
+	uint8_t me;
 
 	pacc = pci_alloc();
 	pacc->method = PCI_ACCESS_I386_TYPE1;
@@ -102,10 +103,7 @@ int main(void)
 	if (fd2 & 0x2) {
 		printf("MEI was hidden on PCI, now unlocked\n");
 	} else {
-		printf("MEI not hidden on PCI, exiting\n");
-		pci_cleanup(pacc);
-		munmap(&rcba, size);
-		exit(1);
+		printf("MEI not hidden on PCI, checking if visible\n");
 	}
 	
 	pci_cleanup(pacc);
@@ -113,10 +111,50 @@ int main(void)
 	pacc = pci_alloc();
 	pacc->method = PCI_ACCESS_I386_TYPE1;
 	pci_scan_bus(pacc);
-	dev = pci_get_dev(pacc, 0, 0, 0x16, 0);
-	pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_SIZES | PCI_FILL_CLASS);
-	name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), 
-		PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
+	me = 0;
+	for (dev=pacc->devices; dev; dev=dev->next) {
+		pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_SIZES | PCI_FILL_CLASS);
+		name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), 
+			PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
+		if (dev->vendor_id == 0x8086) {
+			switch (dev->device_id) {
+				case 0x1c3a:
+				case 0x1d3a:
+				case 0x1e3a:
+				case 0x2364:
+				case 0x29b4:
+				case 0x29c4:
+				case 0x29d4:
+				case 0x29e4:
+				case 0x29f4:
+				case 0x2a04:
+				case 0x2a14:
+				case 0x2a44:
+				case 0x2a50:
+				case 0x8c3a:
+				case 0x8d3a:
+					me = 1;
+					break;
+				default:
+					me = 0;
+					break;
+			}
+		}
+	}
+	if (me == 0) {
+		printf("MEI device not found\n");
+		if (fd2 & 0x2) {
+			printf("Re-hiding MEI device...");
+			fd2 = *(uint32_t *)(rcba + FD2);
+			*(uint32_t *)(rcba + FD2) = fd2 & 0x2;
+			printf("done\n");
+		}
+		printf ("exiting\n");
+		pci_cleanup(pacc);
+		munmap(&rcba, size);
+		return 0;
+	}
+
 	printf("MEI found: [%x:%x] %s\n", dev->vendor_id, dev->device_id, name);
 	stat = pci_read_long(dev, 0x40);
 	printf("\nME Status  : 0x%x\n", stat);
