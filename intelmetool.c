@@ -1,0 +1,158 @@
+/* intelmetool  Dump interesting things about Management Engine even if hidden
+ * Copyright (C) 2014  Damien Zammit <damien@zamaudio.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
+ */
+
+#include <stdio.h>
+#include <inttypes.h>
+#include <pci/pci.h>
+#include <sys/io.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+
+#define FD2 0x3428
+static int fd_mem;
+
+void *map_physical(uint64_t phys_addr, size_t len)
+{
+        void *virt_addr;
+
+        virt_addr = mmap(0, len, PROT_WRITE | PROT_READ, MAP_SHARED,
+                    fd_mem, (off_t) phys_addr);
+
+        if (virt_addr == MAP_FAILED) {
+                printf("Error mapping physical memory 0x%08" PRIx64 "[0x%zx]\n",
+                        phys_addr, len);
+                return NULL;
+        }
+
+        return virt_addr;
+}
+
+void unmap_physical(void *virt_addr, size_t len)
+{
+        munmap(virt_addr, len);
+}
+
+int main(void)
+{
+	struct pci_access *pacc;
+	struct pci_dev *dev;
+	struct pci_dev *sb;
+	uint32_t stat, stat2;
+	uint32_t reg;
+	char namebuf[1024], *name;
+	int size = 0x4000;
+	if (iopl(3)) {
+		perror("iopl");
+		printf("You need to be root\n");
+		exit(1);
+	}
+
+        if ((fd_mem = open("/dev/mem", O_RDWR)) < 0) {
+                perror("Can not open /dev/mem");
+                exit(1);
+        }
+
+	volatile uint8_t *rcba;
+	uint32_t rcba_phys;
+	volatile uint8_t *pciconfigbase;
+	uint32_t fd2;	
+
+	pacc = pci_alloc();
+	pacc->method = PCI_ACCESS_I386_TYPE1;
+	pci_init(pacc);
+	pci_scan_bus(pacc);
+	sb = pci_get_dev(pacc, 0, 0, 0x1f, 0);
+	
+	pci_fill_info(sb, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_SIZES | PCI_FILL_CLASS);
+	
+	name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), 
+		PCI_LOOKUP_DEVICE, sb->vendor_id, sb->device_id);
+	printf("Southbridge: %s\n", name);
+
+	/* Enable MEI */
+	rcba_phys = pci_read_long(sb, 0xf0) & 0xfffffffe;
+	rcba = map_physical(rcba_phys, size);
+	fd2 = *(uint32_t *)(rcba + FD2);
+	*(uint32_t *)(rcba + FD2) = fd2 & ~0x2;
+	if (fd2 & 0x2) {
+		printf("MEI was hidden on PCI, now unlocked\n");
+	} else {
+		printf("No MEI hidden on PCI, exiting\n");
+		pci_cleanup(pacc);
+		munmap(&rcba, size);
+		exit(1);
+	}
+	
+	pci_cleanup(pacc);
+	
+	pacc = pci_alloc();
+	pacc->method = PCI_ACCESS_I386_TYPE1;
+	pci_scan_bus(pacc);
+	dev = pci_get_dev(pacc, 0, 0, 0x16, 0);
+	pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_SIZES | PCI_FILL_CLASS);
+	name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), 
+		PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
+	printf("MEI found: [%x:%x] %s\n", dev->vendor_id, dev->device_id, name);
+	stat = pci_read_long(dev, 0x40);
+	printf("\nME Status  : 0x%x\n", stat);
+        printf("ME:  Working state   : 0x%x\n", stat & 0xf);
+        printf("ME:  MFG mode        : 0x%x\n", (stat & 0x10) >> 4);
+        printf("ME:  FPT bad         : 0x%x\n", (stat & 0x20) >> 5);
+        printf("ME:  Operation state : 0x%x\n", (stat & 0x1c0) >> 6);
+        printf("ME:  FW init complete: 0x%x\n", (stat & 0x200) >> 9);
+        printf("ME:  BUP failure     : 0x%x\n", (stat & 0x400) >> 10);
+        printf("ME:  Update in prog  : 0x%x\n", (stat & 0x800) >> 11);
+        printf("ME:  Error Code      : 0x%x\n", (stat & 0xf000) >> 12);
+        printf("ME:  Operation mode  : 0x%x\n", (stat & 0xf0000) >> 16);
+        printf("ME:  (Reserved)      : 0x%x\n", (stat & 0xf00000) >> 20);
+        printf("ME:  Boot opt present: 0x%x\n", (stat & 0x1000000) >> 24);
+        printf("ME:  ACK data        : 0x%x\n", (stat & 0xe000000) >> 25);
+        printf("ME:  BIOS msg ack    : 0x%x\n", (stat & 0xf0000000) >> 28);
+	
+	stat2 = pci_read_long(dev, 0x48);
+	printf("\nME Status 2 : 0x%x\n", stat2);
+        printf("ME:  Bist in progress: 0x%x\n", stat2 & 0x1);
+        printf("ME:  ICC Status      : 0x%x\n", (stat2 & 0x6) >> 1);
+        printf("ME:  Invoke MEBx     : 0x%x\n", (stat2 & 0x8) >> 3);
+        printf("ME:  CPU replaced    : 0x%x\n", (stat2 & 0x10) >> 4);
+        printf("ME:  MBP ready       : 0x%x\n", (stat2 & 0x20) >> 5);
+        printf("ME:  MFS failure     : 0x%x\n", (stat2 & 0x40) >> 6);
+        printf("ME:  Warm reset req  : 0x%x\n", (stat2 & 0x80) >> 7);
+        printf("ME:  CPU repl valid  : 0x%x\n", (stat2 & 0x100) >> 8);
+        printf("ME:  (Reserved)      : 0x%x\n", (stat2 & 0x600) >> 9);
+        printf("ME:  FW update req   : 0x%x\n", (stat2 & 0x800) >> 11);
+        printf("ME:  (Reserved)      : 0x%x\n", (stat2 & 0xf000) >> 12);
+        printf("ME:  Current state   : 0x%x\n", (stat2 & 0xff0000) >> 16);
+        printf("ME:  Current PM event: 0x%x\n", (stat2 & 0xf000000) >> 24);
+        printf("ME:  Progress code   : 0x%x\n", (stat2 & 0xf0000000) >> 28);	
+	pci_cleanup(pacc);
+
+	if (((stat & 0xf000) >> 12 == 0) && ((stat & 0xf0000) >> 16) == 0) {
+		printf("\nME seems okay on this board\n");
+	} else {
+		printf("\nME has a broken implementation on your board with this BIOS\n");
+	}
+
+	printf("For more information:  'sudo lspci -H1 -nnvvxxx'\n");
+	printf("Re-hiding MEI device...");
+	fd2 = *(uint32_t *)(rcba + FD2);
+	*(uint32_t *)(rcba + FD2) = fd2 & 0x2;
+	printf("done, exiting\n");
+	munmap(&rcba, size);
+	return 0;
+}
