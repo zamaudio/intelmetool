@@ -149,7 +149,7 @@ int main(void)
 		if (fd2 & 0x2) {
 			printf("Re-hiding MEI device...");
 			fd2 = *(uint32_t *)(rcba + FD2);
-			*(uint32_t *)(rcba + FD2) = fd2 & 0x2;
+			*(uint32_t *)(rcba + FD2) = fd2 | 0x2;
 			printf("done\n");
 		}
 		printf ("exiting\n");
@@ -177,7 +177,7 @@ int main(void)
 	if (fd2 & 0x2) {
 		printf("Re-hiding MEI device...");
 		fd2 = *(uint32_t *)(rcba + FD2);
-		*(uint32_t *)(rcba + FD2) = fd2 & 0x2;
+		*(uint32_t *)(rcba + FD2) = fd2 | 0x2;
 		printf("done, ");
 	}
 	printf("exiting\n");
