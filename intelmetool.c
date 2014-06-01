@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include "me.h"
 
 #define FD2 0x3428
 static int fd_mem;
@@ -110,6 +111,7 @@ int main(void)
 	
 	pacc = pci_alloc();
 	pacc->method = PCI_ACCESS_I386_TYPE1;
+	pci_init(pacc);
 	pci_scan_bus(pacc);
 	me = 0;
 	for (dev=pacc->devices; dev; dev=dev->next) {
@@ -140,6 +142,7 @@ int main(void)
 					break;
 			}
 		}
+		if (me) break;
 	}
 	if (me == 0) {
 		printf("MEI device not found\n");
@@ -158,36 +161,11 @@ int main(void)
 	printf("MEI found: [%x:%x] %s\n", dev->vendor_id, dev->device_id, name);
 	stat = pci_read_long(dev, 0x40);
 	printf("\nME Status  : 0x%x\n", stat);
-        printf("ME:  Working state   : 0x%x\n", stat & 0xf);
-        printf("ME:  MFG mode        : 0x%x\n", (stat & 0x10) >> 4);
-        printf("ME:  FPT bad         : 0x%x\n", (stat & 0x20) >> 5);
-        printf("ME:  Operation state : 0x%x\n", (stat & 0x1c0) >> 6);
-        printf("ME:  FW init complete: 0x%x\n", (stat & 0x200) >> 9);
-        printf("ME:  BUP failure     : 0x%x\n", (stat & 0x400) >> 10);
-        printf("ME:  Update in prog  : 0x%x\n", (stat & 0x800) >> 11);
-        printf("ME:  Error Code      : 0x%x\n", (stat & 0xf000) >> 12);
-        printf("ME:  Operation mode  : 0x%x\n", (stat & 0xf0000) >> 16);
-        printf("ME:  (Reserved)      : 0x%x\n", (stat & 0xf00000) >> 20);
-        printf("ME:  Boot opt present: 0x%x\n", (stat & 0x1000000) >> 24);
-        printf("ME:  ACK data        : 0x%x\n", (stat & 0xe000000) >> 25);
-        printf("ME:  BIOS msg ack    : 0x%x\n", (stat & 0xf0000000) >> 28);
-	
 	stat2 = pci_read_long(dev, 0x48);
-	printf("\nME Status 2 : 0x%x\n", stat2);
-        printf("ME:  Bist in progress: 0x%x\n", stat2 & 0x1);
-        printf("ME:  ICC Status      : 0x%x\n", (stat2 & 0x6) >> 1);
-        printf("ME:  Invoke MEBx     : 0x%x\n", (stat2 & 0x8) >> 3);
-        printf("ME:  CPU replaced    : 0x%x\n", (stat2 & 0x10) >> 4);
-        printf("ME:  MBP ready       : 0x%x\n", (stat2 & 0x20) >> 5);
-        printf("ME:  MFS failure     : 0x%x\n", (stat2 & 0x40) >> 6);
-        printf("ME:  Warm reset req  : 0x%x\n", (stat2 & 0x80) >> 7);
-        printf("ME:  CPU repl valid  : 0x%x\n", (stat2 & 0x100) >> 8);
-        printf("ME:  (Reserved)      : 0x%x\n", (stat2 & 0x600) >> 9);
-        printf("ME:  FW update req   : 0x%x\n", (stat2 & 0x800) >> 11);
-        printf("ME:  (Reserved)      : 0x%x\n", (stat2 & 0xf000) >> 12);
-        printf("ME:  Current state   : 0x%x\n", (stat2 & 0xff0000) >> 16);
-        printf("ME:  Current PM event: 0x%x\n", (stat2 & 0xf000000) >> 24);
-        printf("ME:  Progress code   : 0x%x\n", (stat2 & 0xf0000000) >> 28);	
+	printf("\nME Status 2 : 0x%x\n\n", stat2);
+
+	intel_me_status(stat, stat2);
+
 	pci_cleanup(pacc);
 
 	if (((stat & 0xf000) >> 12 == 0) && ((stat & 0xf0000) >> 16) == 0) {
@@ -196,10 +174,13 @@ int main(void)
 		printf("\nME has a broken implementation on your board with this BIOS\n");
 	}
 
-	printf("Re-hiding MEI device...");
-	fd2 = *(uint32_t *)(rcba + FD2);
-	*(uint32_t *)(rcba + FD2) = fd2 & 0x2;
-	printf("done, exiting\n");
+	if (fd2 & 0x2) {
+		printf("Re-hiding MEI device...");
+		fd2 = *(uint32_t *)(rcba + FD2);
+		*(uint32_t *)(rcba + FD2) = fd2 & 0x2;
+		printf("done, ");
+	}
+	printf("exiting\n");
 	munmap(&rcba, size);
 	return 0;
 }
