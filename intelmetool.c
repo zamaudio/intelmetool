@@ -83,8 +83,11 @@ int main(void)
 	name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), 
 		PCI_LOOKUP_DEVICE, sb->vendor_id, sb->device_id);
 	printf("Southbridge: %s\n", name);
-	if ((sb->vendor_id == 0x8086) && (((sb->device_id & 0x1e00) == 0x1e00)
-			|| ((sb->device_id & 0x1e00) == 0x1c00))) {
+	if ((sb->vendor_id == 0x8086) && (
+		((sb->device_id & 0x00f0) == 0x0000) ||
+		((sb->device_id & 0x00f0) == 0x0010) ||
+		((sb->device_id & 0x00f0) == 0x0040) ||
+		((sb->device_id & 0x00f0) == 0x0050))) {
 		printf("Chipset supported and has ME\n");
 	} else {
 		printf("Chipset unsupported, exiting\n");
