@@ -168,7 +168,7 @@ int main(void)
 
 	pci_cleanup(pacc);
 
-	if (((stat & 0xf000) >> 12 == 0) && ((stat & 0xf0000) >> 16) == 0) {
+	if ((stat & 0xf000) >> 12 == 0) {
 		printf("\nME seems okay on this board\n");
 	} else {
 		printf("\nME has a broken implementation on your board with this BIOS\n");
