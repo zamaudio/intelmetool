@@ -379,7 +379,7 @@ struct me_fwcaps {
 	uint32_t id;
 	uint8_t length;
 	mefwcaps_sku caps_sku;
-	uint8_t reserved[3];
+//	uint8_t reserved[3];
 } __attribute__ ((packed));
 
 struct me_debug_mem {
@@ -396,5 +396,9 @@ uint32_t intel_mei_setup(struct pci_dev *dev);
 void intel_mei_unmap(void);
 int mkhi_get_fwcaps(void);
 int mkhi_get_fw_version(void);
+int mkhi_debug_me_memory(void *addr);
+void mei_reset(void);
+void udelay(uint32_t usecs);
+int intel_me_extend_valid(struct pci_dev *dev);
 
 #endif

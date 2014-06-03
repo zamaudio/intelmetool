@@ -30,7 +30,7 @@
 #define read32(addr) (*((uint32_t *) (addr) ))
 #define write32(addr, val) (*((uint32_t *) (addr)) = val)
 
-static void udelay(uint32_t usecs)
+void udelay(uint32_t usecs)
 {
 	int i;
 	for(i = 0; i < usecs; i++)
@@ -38,6 +38,7 @@ static void udelay(uint32_t usecs)
 }
 
 /* Path that the BIOS should take based on ME state */
+/*
 static const char *me_bios_path_values[] = {
 	[ME_NORMAL_BIOS_PATH]		= "Normal",
 	[ME_S3WAKE_BIOS_PATH]		= "S3 Wake",
@@ -46,6 +47,7 @@ static const char *me_bios_path_values[] = {
 	[ME_DISABLE_BIOS_PATH]		= "Disable",
 	[ME_FIRMWARE_UPDATE_BIOS_PATH]	= "Firmware Update",
 };
+*/
 
 /* MMIO base address for MEI interface */
 static uint32_t mei_base_address;
@@ -156,7 +158,7 @@ static int mei_wait_for_me_ready(void)
 	return -1;
 }
 
-static void mei_reset(void)
+void mei_reset(void)
 {
 	struct mei_csr host;
 
@@ -178,6 +180,7 @@ static void mei_reset(void)
 	host.ready = 1;
 	host.reset = 0;
 	write_host_csr(&host);
+	udelay(10000);
 }
 
 static int mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
@@ -337,6 +340,7 @@ static inline int mei_sendrecv(struct mei_header *mei, struct mkhi_header *mkhi,
 }
 
 /* Send END OF POST message to the ME */
+/*
 static int mkhi_end_of_post(void)
 {
 	struct mkhi_header mkhi = {
@@ -350,7 +354,6 @@ static int mkhi_end_of_post(void)
 		.length		= sizeof(mkhi),
 	};
 
-	/* Send request and wait for response */
 	if (mei_sendrecv(&mei, &mkhi, NULL, NULL, 0) < 0) {
 		printf("ME: END OF POST message failed\n");
 		return -1;
@@ -359,6 +362,7 @@ static int mkhi_end_of_post(void)
 	printf("ME: END OF POST message successful\n");
 	return 0;
 }
+*/
 
 /* Get ME firmware version */
 int mkhi_get_fw_version(void)
@@ -370,32 +374,32 @@ int mkhi_get_fw_version(void)
 		.command	= MKHI_GET_FW_VERSION,
 	};
 	struct mei_header mei = {
-		.is_complete	= 0,
+		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
 		.length		= sizeof(mkhi),
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &data, &version, 2*sizeof(uint16_t)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(version)) < 0) {
 		printf("ME: GET FW VERSION message failed\n");
 		return -1;
 	}
 
-	printf("ME: Firmware Version %u.%u.?.? (code) ",
-	       //"?.?.?.? (recovery)\n",
-	       version.code_major, version.code_minor);
-	       //version.code_build_number, version.code_hot_fix,
-	       //version.recovery_major, version.recovery_minor); 
-	       //version.recovery_build_number, version.recovery_hot_fix);
+	printf("ME: Firmware Version %u.%u.%u.%u (code) "
+	       "%u.%u.%u.%u (recovery)\n",
+	       version.code_major, version.code_minor,
+	       version.code_build_number, version.code_hot_fix,
+	       version.recovery_major, version.recovery_minor, 
+	       version.recovery_build_number, version.recovery_hot_fix);
 
 	return 0;
 }
 
 static inline void print_cap(const char *name, int state)
 {
-	printf("ME Capability: %-30s : %sabled\n",
-	       name, state ? "en" : "dis");
+	printf("ME Capability: %-30s : %s\n",
+	       name, state ? "ON" : "OFF");
 }
 
 /* Get ME Firmware Capabilities */
@@ -408,7 +412,7 @@ int mkhi_get_fwcaps(void)
 		.command	= MKHI_FWCAPS_GET_RULE,
 	};
 	struct mei_header mei = {
-		.is_complete	= 1,
+		.is_complete	= 0,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
 		.length		= sizeof(mkhi) + sizeof(rule_id),
@@ -420,24 +424,24 @@ int mkhi_get_fwcaps(void)
 		return -1;
 	}
 
-	print_cap("Full Network manageability", cap.caps_sku.full_net);
-	print_cap("Regular Network manageability", cap.caps_sku.std_net);
-	print_cap("Manageability", cap.caps_sku.manageability);
-	print_cap("Small business technology", cap.caps_sku.small_business);
-	print_cap("Level III manageability", cap.caps_sku.l3manageability);
-	print_cap("IntelR Anti-Theft (AT)", cap.caps_sku.intel_at);
-	print_cap("IntelR Capability Licensing Service (CLS)",
+	print_cap("Full Network manageability                ", cap.caps_sku.full_net);
+	print_cap("Regular Network manageability             ", cap.caps_sku.std_net);
+	print_cap("Manageability                             ", cap.caps_sku.manageability);
+	print_cap("Small business technology                 ", cap.caps_sku.small_business);
+	print_cap("Level III manageability                   ", cap.caps_sku.l3manageability);
+	print_cap("IntelR Anti-Theft (AT)                    ", cap.caps_sku.intel_at);
+	print_cap("IntelR Capability Licensing Service (CLS) ",
 		  cap.caps_sku.intel_cls);
-	print_cap("IntelR Power Sharing Technology (MPC)",
+	print_cap("IntelR Power Sharing Technology (MPC)     ",
 		  cap.caps_sku.intel_mpc);
-	print_cap("ICC Over Clocking", cap.caps_sku.icc_over_clocking);
-        print_cap("Protected Audio Video Path (PAVP)", cap.caps_sku.pavp);
-	print_cap("IPV6", cap.caps_sku.ipv6);
-	print_cap("KVM Remote Control (KVM)", cap.caps_sku.kvm);
-	print_cap("Outbreak Containment Heuristic (OCH)", cap.caps_sku.och);
-	print_cap("Virtual LAN (VLAN)", cap.caps_sku.vlan);
-	print_cap("TLS", cap.caps_sku.tls);
-	print_cap("Wireless LAN (WLAN)", cap.caps_sku.wlan);
+	print_cap("ICC Over Clocking                         ", cap.caps_sku.icc_over_clocking);
+        print_cap("Protected Audio Video Path (PAVP)         ", cap.caps_sku.pavp);
+	print_cap("IPV6                                      ", cap.caps_sku.ipv6);
+	print_cap("KVM Remote Control (KVM)                  ", cap.caps_sku.kvm);
+	print_cap("Outbreak Containment Heuristic (OCH)      ", cap.caps_sku.och);
+	print_cap("Virtual LAN (VLAN)                        ", cap.caps_sku.vlan);
+	print_cap("TLS                                       ", cap.caps_sku.tls);
+	print_cap("Wireless LAN (WLAN)                       ", cap.caps_sku.wlan);
 
 	return 0;
 }
@@ -474,6 +478,7 @@ uint32_t mkhi_global_reset(void)
 }
 
 /* Tell ME thermal reporting parameters */
+/*
 void mkhi_thermal(void)
 {
 	struct me_thermal_reporting thermal = {
@@ -495,16 +500,18 @@ void mkhi_thermal(void)
 
 	printf("ME: Sending thermal reporting params\n");
 
-	/* Send request and don't wait for response */
 	mei_sendrecv(&mei, &mkhi, &thermal, NULL, 0);
 }
+*/
 
 /* Enable debug of internal ME memory */
-void mkhi_debug_me_memory(void)
+int mkhi_debug_me_memory(void *physaddr)
 {
-	/* copy whole ME memory to phys=0x400000 */
+	uint32_t data = 0;
+
+	/* copy whole ME memory to a readable space */
 	struct me_debug_mem memory = {
-		.debug_phys = 0x400000,  
+		.debug_phys = (size_t)physaddr,  
 		.debug_size = 0x2000000,
 		.me_phys = 0x0,
 		.me_size = 0x2000000,
@@ -514,18 +521,20 @@ void mkhi_debug_me_memory(void)
 		.command	= GEN_SET_DEBUG_MEM,
 	};
 	struct mei_header mei = {
-		.is_complete	= 1,
+		.is_complete	= 0,
 		.length		= sizeof(mkhi) + sizeof(memory),
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
 	};
 
-	printf("ME: Debug memory to 0x400000...");
-	if (mei_sendrecv(&mei, &mkhi, &memory, NULL, 0) < 0) {
+	printf("ME: Debug memory to 0x%zx ...", (size_t)physaddr);
+	if (mei_sendrecv(&mei, &mkhi, &memory, &data, sizeof(memory)) < 0) {
 		printf("failed\n");
+		return -1;
 	} else {
 		printf("done\n");
 	}
+	return 0;
 }
 
 /* Prepare ME for MEI messages */
@@ -558,7 +567,7 @@ void intel_mei_unmap(void)
 }
 
 /* Read the Extend register hash of ME firmware */
-static int intel_me_extend_valid(struct pci_dev *dev)
+int intel_me_extend_valid(struct pci_dev *dev)
 {
 	struct me_heres status;
 	uint32_t extend[8] = {0};
