@@ -369,7 +369,7 @@ int mkhi_get_fw_version(void)
 		.command	= MKHI_GET_FW_VERSION,
 	};
 	struct mei_header mei = {
-		.is_complete	= 1,
+		.is_complete	= 0,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
 		.length		= sizeof(mkhi),
