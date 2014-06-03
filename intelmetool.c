@@ -20,34 +20,10 @@
 #include <pci/pci.h>
 #include <sys/io.h>
 #include <stdlib.h>
-#include <sys/mman.h>
-#include <fcntl.h>
 #include "me.h"
+#include "mmap.h"
 
 #define FD2 0x3428
-static int fd_mem;
-
-void *map_physical(uint64_t phys_addr, size_t len)
-{
-        void *virt_addr;
-
-        virt_addr = mmap(0, len, PROT_WRITE | PROT_READ, MAP_SHARED,
-                    fd_mem, (off_t) phys_addr);
-
-        if (virt_addr == MAP_FAILED) {
-                printf("Error mapping physical memory 0x%08" PRIx64 "[0x%zx]\n",
-                        phys_addr, len);
-                return NULL;
-        }
-
-        return virt_addr;
-}
-
-void unmap_physical(void *virt_addr, size_t len)
-{
-        munmap(virt_addr, len);
-}
-
 int main(void)
 {
 	struct pci_access *pacc;
@@ -175,6 +151,7 @@ int main(void)
 
 	intel_mei_setup(dev);
 	mkhi_get_fwcaps();
+	intel_mei_unmap();
 
 	if (fd2 & 0x2) {
 		printf("Re-hiding MEI device...");
