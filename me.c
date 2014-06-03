@@ -180,7 +180,7 @@ static void mei_reset(void)
 	write_host_csr(&host);
 }
 
-static uint32_t mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
+static int mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 			void *req_data)
 {
 	struct mei_csr host;
@@ -243,7 +243,7 @@ static uint32_t mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	return mei_wait_for_me_ready();
 }
 
-static uint32_t mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
+static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 			void *rsp_data, uint32_t rsp_bytes)
 {
 	struct mei_header mei_rsp;
@@ -326,7 +326,7 @@ static uint32_t mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	return mei_wait_for_me_ready();
 }
 
-static inline uint32_t mei_sendrecv(struct mei_header *mei, struct mkhi_header *mkhi,
+static inline int mei_sendrecv(struct mei_header *mei, struct mkhi_header *mkhi,
 			       void *req_data, void *rsp_data, uint32_t rsp_bytes)
 {
 	if (mei_send_msg(mei, mkhi, req_data) < 0)
@@ -337,7 +337,7 @@ static inline uint32_t mei_sendrecv(struct mei_header *mei, struct mkhi_header *
 }
 
 /* Send END OF POST message to the ME */
-static uint32_t mkhi_end_of_post(void)
+static int mkhi_end_of_post(void)
 {
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,
@@ -361,7 +361,7 @@ static uint32_t mkhi_end_of_post(void)
 }
 
 /* Get ME firmware version */
-uint32_t mkhi_get_fw_version(void)
+int mkhi_get_fw_version(void)
 {
 	struct me_fw_version version;
 	struct mkhi_header mkhi = {
@@ -398,7 +398,7 @@ static inline void print_cap(const char *name, int state)
 }
 
 /* Get ME Firmware Capabilities */
-uint32_t mkhi_get_fwcaps(void)
+int mkhi_get_fwcaps(void)
 {
 	uint32_t rule_id = 0;
 	struct me_fwcaps cap;
@@ -464,7 +464,7 @@ uint32_t mkhi_global_reset(void)
 	/* Send request and wait for response */
 	if (mei_sendrecv(&mei, &mkhi, &reset, NULL, 0) < 0) {
 		/* No response means reset will happen shortly... */
-		hlt();
+		asm("hlt");
 	}
 
 	/* If the ME responded it rejected the reset request */
@@ -557,7 +557,7 @@ void intel_mei_unmap(void)
 }
 
 /* Read the Extend register hash of ME firmware */
-static uint32_t intel_me_extend_valid(struct pci_dev *dev)
+static int intel_me_extend_valid(struct pci_dev *dev)
 {
 	struct me_heres status;
 	uint32_t extend[8] = {0};

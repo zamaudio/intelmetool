@@ -23,6 +23,7 @@
 #include "me.h"
 #include "mmap.h"
 
+extern int fd_mem;
 #define FD2 0x3428
 int main(void)
 {
@@ -30,7 +31,6 @@ int main(void)
 	struct pci_dev *dev;
 	struct pci_dev *sb;
 	uint32_t stat, stat2;
-	uint32_t reg;
 	char namebuf[1024], *name;
 	int size = 0x4000;
 	if (iopl(3)) {
@@ -129,7 +129,7 @@ int main(void)
 		}
 		printf ("exiting\n");
 		pci_cleanup(pacc);
-		munmap(&rcba, size);
+		munmap((void*)rcba, size);
 		return 0;
 	}
 
@@ -148,6 +148,7 @@ int main(void)
 	}
 
 	intel_mei_setup(dev);
+	mkhi_get_fw_version();
 	mkhi_get_fwcaps();
 	intel_mei_unmap();
 

@@ -390,5 +390,7 @@ void mkhi_thermal(void);
 void mkhi_hack_me_memory(void);
 uint32_t intel_mei_setup(struct pci_dev *dev);
 void intel_mei_unmap(void);
+int mkhi_get_fwcaps(void);
+int mkhi_get_fw_version(void);
 
 #endif
