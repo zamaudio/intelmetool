@@ -141,8 +141,6 @@ int main(void)
 
 	intel_me_status(stat, stat2);
 
-	pci_cleanup(pacc);
-
 	if ((stat & 0xf000) >> 12 == 0) {
 		printf("\nME seems okay on this board\n");
 	} else {
@@ -152,6 +150,8 @@ int main(void)
 	intel_mei_setup(dev);
 	mkhi_get_fwcaps();
 	intel_mei_unmap();
+
+	pci_cleanup(pacc);
 
 	if (fd2 & 0x2) {
 		printf("Re-hiding MEI device...");
