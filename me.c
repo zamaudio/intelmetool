@@ -377,16 +377,16 @@ int mkhi_get_fw_version(void)
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(version)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &data, &version, 2*sizeof(uint16_t)) < 0) {
 		printf("ME: GET FW VERSION message failed\n");
 		return -1;
 	}
 
-	printf("ME: Firmware Version %u.%u.%u.%u (code) "
-	       "%u.%u.?.? (recovery)\n",
-	       version.code_major, version.code_minor,
-	       version.code_build_number, version.code_hot_fix,
-	       version.recovery_major, version.recovery_minor); 
+	printf("ME: Firmware Version %u.%u.?.? (code) ",
+	       //"?.?.?.? (recovery)\n",
+	       version.code_major, version.code_minor);
+	       //version.code_build_number, version.code_hot_fix,
+	       //version.recovery_major, version.recovery_minor); 
 	       //version.recovery_build_number, version.recovery_hot_fix);
 
 	return 0;
