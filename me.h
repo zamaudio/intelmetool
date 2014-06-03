@@ -28,6 +28,8 @@
 #define ME_RETRY                100000  /* 1 second */
 #define ME_DELAY                10      /* 10 us */
 
+#pragma pack(1)
+
 /*
  * Management Engine PCI registers
  */
@@ -379,7 +381,7 @@ struct me_fwcaps {
 	uint32_t id;
 	uint8_t length;
 	mefwcaps_sku caps_sku;
-//	uint8_t reserved[3];
+	uint8_t reserved[3];
 } __attribute__ ((packed));
 
 struct me_debug_mem {

@@ -85,6 +85,7 @@ int main(void)
 	/* Enable MEI */
 	rcba_phys = pci_read_long(sb, 0xf0) & 0xfffffffe;
 	rcba = map_physical(rcba_phys, size);
+	printf("RCBA at 0x%08" PRIx32 "\n", (uint32_t)rcba_phys);
 	fd2 = *(uint32_t *)(rcba + FD2);
 	*(uint32_t *)(rcba + FD2) = fd2 & ~0x2;
 	if (fd2 & 0x2) {
@@ -162,9 +163,9 @@ int main(void)
 	}
 
 	intel_mei_setup(dev);
-
+	mei_reset();
 	mkhi_get_fw_version();
-	
+/*	
 	mei_reset();
 	mkhi_get_fwcaps();
 	
@@ -182,6 +183,7 @@ int main(void)
 			dumpmem(me_clone, 0x1000);
 		}
 	}
+*/
 	intel_mei_unmap();
 
 	pci_cleanup(pacc);
@@ -194,6 +196,6 @@ int main(void)
 	}
 	printf("exiting\n");
 	munmap((void*)rcba, size);
-	free(me_clone);
+	//free(me_clone);
 	return 0;
 }

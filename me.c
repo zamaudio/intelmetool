@@ -24,11 +24,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/io.h>
+#include <assert.h>
 #include "me.h"
 #include "mmap.h"
 
-#define read32(addr) (*((uint32_t *) (addr) ))
-#define write32(addr, val) (*((uint32_t *) (addr)) = val)
+#define read32(addr, off) ( *((uint32_t *) (addr + off)) )
+#define write32(addr, off, val) ( *((uint32_t *) (addr + off)) = val)
+
+//#define ARC4 1
 
 void udelay(uint32_t usecs)
 {
@@ -51,9 +54,9 @@ static const char *me_bios_path_values[] = {
 
 /* MMIO base address for MEI interface */
 static uint32_t mei_base_address;
-static uint8_t *mei_mmap;
+static uint8_t* mei_mmap;
 
-#if 0
+#if 1
 static void mei_dump(void *ptr, int dword, int offset, const char *type)
 {
 	struct mei_csr *csr;
@@ -93,7 +96,7 @@ static void mei_dump(void *ptr, int dword, int offset, const char *type)
 
 static inline void mei_read_dword_ptr(void *ptr, uint32_t offset)
 {
-	uint32_t dword = read32(mei_mmap + offset);
+	uint32_t dword = read32(mei_mmap, offset);
 	memcpy(ptr, &dword, sizeof(dword));
 	mei_dump(ptr, dword, offset, "READ");
 }
@@ -102,8 +105,8 @@ static inline void mei_write_dword_ptr(void *ptr, uint32_t offset)
 {
 	uint32_t dword = 0;
 	memcpy(&dword, ptr, sizeof(dword));
-	write32(mei_mmap + offset, dword);
-	mei_dump(ptr, dword, offset, "DUMMY WRITE");
+	write32(mei_mmap, offset, dword);
+	mei_dump(ptr, dword, offset, "WRITE");
 }
 
 static inline void pci_read_dword_ptr(struct pci_dev *dev, void *ptr, uint32_t offset)
@@ -130,13 +133,13 @@ static inline void read_me_csr(struct mei_csr *csr)
 
 static inline void write_cb(uint32_t dword)
 {
-	write32(mei_mmap + MEI_H_CB_WW, dword);
-	mei_dump(NULL, dword, MEI_H_CB_WW, "DUMMY WRITE");
+	write32(mei_mmap, MEI_H_CB_WW, dword);
+	mei_dump(NULL, dword, MEI_H_CB_WW, "WRITE");
 }
 
 static inline uint32_t read_cb(void)
 {
-	uint32_t dword = read32(mei_mmap + MEI_ME_CB_RW);
+	uint32_t dword = read32(mei_mmap, MEI_ME_CB_RW);
 	mei_dump(NULL, dword, MEI_ME_CB_RW, "READ");
 	return dword;
 }
@@ -268,6 +271,9 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	 */
 	for (n = ME_RETRY; n; --n) {
 		read_me_csr(&me);
+		//if (me.interrupt_enable)
+		//	break;
+
 		if ((me.buffer_write_ptr - me.buffer_read_ptr) >= expected)
 			break;
 		udelay(ME_DELAY);
@@ -290,9 +296,9 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	ndata = mei_rsp.length >> 2;
 	if (mei_rsp.length & 3)
 		ndata++;
-	if (ndata != (expected - 1)) {
+	if (ndata != (expected - 1)) {  //XXX
 		printf("ME: response is missing data\n");
-		return -1;
+		//return -1;
 	}
 
 	/* Read and verify MKHI response header from the ME */
@@ -304,7 +310,7 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 		       "command %u ?= %u, is_response %u\n", mkhi->group_id,
 		       mkhi_rsp.group_id, mkhi->command, mkhi_rsp.command,
 		       mkhi_rsp.is_response);
-		return -1;
+		//return -1;
 	}
 	ndata--; /* MKHI header has been read */
 
@@ -312,7 +318,7 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	if (ndata != (rsp_bytes >> 2)) {
 		printf("ME: not enough room in response buffer: "
 		       "%u != %u\n", ndata, rsp_bytes >> 2);
-		return -1;
+		//return -1;
 	}
 
 	/* Read response data from the circular buffer */
@@ -368,20 +374,21 @@ static int mkhi_end_of_post(void)
 int mkhi_get_fw_version(void)
 {
 	uint32_t data = 0;
-	struct me_fw_version version;
+	struct me_fw_version version = {0};
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,
-		.command	= MKHI_GET_FW_VERSION,
+		.command	= GEN_GET_FW_VERSION,
+		.is_response 	= 0,
 	};
 	struct mei_header mei = {
 		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
-		.length		= sizeof(mkhi),
+		.length		= sizeof(mkhi) + sizeof(data),
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(version)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(mkhi) + sizeof(data) + sizeof(version)  ) < 0) {
 		printf("ME: GET FW VERSION message failed\n");
 		return -1;
 	}
@@ -402,46 +409,64 @@ static inline void print_cap(const char *name, int state)
 	       name, state ? "ON" : "OFF");
 }
 
+static inline int old_me_version(void)
+{
+#ifdef ARC4
+	return 1;
+#else
+	return 0;
+#endif
+}
+
 /* Get ME Firmware Capabilities */
 int mkhi_get_fwcaps(void)
 {
-	uint32_t rule_id = 0;
-	struct me_fwcaps cap;
+	struct {
+		uint32_t rule_id;
+		uint8_t rule_len;
+		struct me_fwcaps cap;
+	} fwcaps;
+
+	fwcaps.rule_id = 0;
+	fwcaps.rule_len = 0;
+	
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_FWCAPS,
 		.command	= MKHI_FWCAPS_GET_RULE,
+		.is_response	= 0,
 	};
 	struct mei_header mei = {
 		.is_complete	= 0,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
-		.length		= sizeof(mkhi) + sizeof(rule_id),
+		.length		= sizeof(fwcaps.rule_id),
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &rule_id, &cap, sizeof(cap)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &fwcaps.rule_id, &fwcaps.cap, 
+			old_me_version() ? sizeof(fwcaps.cap) - 2 : sizeof(fwcaps.cap)) < 0) {
 		printf("ME: GET FWCAPS message failed\n");
 		return -1;
 	}
 
-	print_cap("Full Network manageability                ", cap.caps_sku.full_net);
-	print_cap("Regular Network manageability             ", cap.caps_sku.std_net);
-	print_cap("Manageability                             ", cap.caps_sku.manageability);
-	print_cap("Small business technology                 ", cap.caps_sku.small_business);
-	print_cap("Level III manageability                   ", cap.caps_sku.l3manageability);
-	print_cap("IntelR Anti-Theft (AT)                    ", cap.caps_sku.intel_at);
+	print_cap("Full Network manageability                ", fwcaps.cap.caps_sku.full_net);
+	print_cap("Regular Network manageability             ", fwcaps.cap.caps_sku.std_net);
+	print_cap("Manageability                             ", fwcaps.cap.caps_sku.manageability);
+	print_cap("Small business technology                 ", fwcaps.cap.caps_sku.small_business);
+	print_cap("Level III manageability                   ", fwcaps.cap.caps_sku.l3manageability);
+	print_cap("IntelR Anti-Theft (AT)                    ", fwcaps.cap.caps_sku.intel_at);
 	print_cap("IntelR Capability Licensing Service (CLS) ",
-		  cap.caps_sku.intel_cls);
+		  fwcaps.cap.caps_sku.intel_cls);
 	print_cap("IntelR Power Sharing Technology (MPC)     ",
-		  cap.caps_sku.intel_mpc);
-	print_cap("ICC Over Clocking                         ", cap.caps_sku.icc_over_clocking);
-        print_cap("Protected Audio Video Path (PAVP)         ", cap.caps_sku.pavp);
-	print_cap("IPV6                                      ", cap.caps_sku.ipv6);
-	print_cap("KVM Remote Control (KVM)                  ", cap.caps_sku.kvm);
-	print_cap("Outbreak Containment Heuristic (OCH)      ", cap.caps_sku.och);
-	print_cap("Virtual LAN (VLAN)                        ", cap.caps_sku.vlan);
-	print_cap("TLS                                       ", cap.caps_sku.tls);
-	print_cap("Wireless LAN (WLAN)                       ", cap.caps_sku.wlan);
+		  fwcaps.cap.caps_sku.intel_mpc);
+	print_cap("ICC Over Clocking                         ", fwcaps.cap.caps_sku.icc_over_clocking);
+        print_cap("Protected Audio Video Path (PAVP)         ", fwcaps.cap.caps_sku.pavp);
+	print_cap("IPV6                                      ", fwcaps.cap.caps_sku.ipv6);
+	print_cap("KVM Remote Control (KVM)                  ", fwcaps.cap.caps_sku.kvm);
+	print_cap("Outbreak Containment Heuristic (OCH)      ", fwcaps.cap.caps_sku.och);
+	print_cap("Virtual LAN (VLAN)                        ", fwcaps.cap.caps_sku.vlan);
+	print_cap("TLS                                       ", fwcaps.cap.caps_sku.tls);
+	print_cap("Wireless LAN (WLAN)                       ", fwcaps.cap.caps_sku.wlan);
 
 	return 0;
 }
@@ -508,27 +533,29 @@ void mkhi_thermal(void)
 int mkhi_debug_me_memory(void *physaddr)
 {
 	uint32_t data = 0;
+	assert(sizeof(size_t) == 4); 
 
 	/* copy whole ME memory to a readable space */
 	struct me_debug_mem memory = {
 		.debug_phys = (size_t)physaddr,  
 		.debug_size = 0x2000000,
-		.me_phys = 0x0,
+		.me_phys = 0x20000000,
 		.me_size = 0x2000000,
 	};
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,
 		.command	= GEN_SET_DEBUG_MEM,
+		.is_response	= 0,
 	};
 	struct mei_header mei = {
-		.is_complete	= 0,
+		.is_complete	= 1,
 		.length		= sizeof(mkhi) + sizeof(memory),
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
 	};
 
 	printf("ME: Debug memory to 0x%zx ...", (size_t)physaddr);
-	if (mei_sendrecv(&mei, &mkhi, &memory, &data, sizeof(memory)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &memory, &data, 0) < 0) {
 		printf("failed\n");
 		return -1;
 	} else {
