@@ -533,7 +533,7 @@ uint32_t intel_mei_setup(struct pci_dev *dev)
 	struct mei_csr host;
 	uint32_t reg32;
 
-	mei_base_address = pci_read_long(dev, PCI_BASE_ADDRESS_0);
+	mei_base_address = dev->base_addr[0] & ~0xf;
 	mei_mmap = map_physical(mei_base_address, 0x10);
 
 	/* Ensure Memory and Bus Master bits are set */
