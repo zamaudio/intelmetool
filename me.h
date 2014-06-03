@@ -19,7 +19,14 @@
  * MA 02110-1301 USA
  */
 
+#ifndef ME_H
+#define ME_H
+
 #include <inttypes.h>
+#include <pci/pci.h>
+
+#define ME_RETRY                100000  /* 1 second */
+#define ME_DELAY                10      /* 10 us */
 
 /*
  * Management Engine PCI registers
@@ -135,6 +142,13 @@ struct me_heres {
 	uint32_t extend_reg_valid: 1;
 } __attribute__ ((packed));
 
+struct me_thermal_reporting {
+	uint32_t polling_timeout: 8;
+	uint32_t smbus_ec_msglen: 8;
+	uint32_t smbus_ec_msgpec: 8;
+	uint32_t dimmnumber: 8;
+} __attribute__ ((packed));
+
 /*
  * Management Engine MEI registers
  */
@@ -160,9 +174,12 @@ struct mei_csr {
 #define MEI_ADDRESS_AMT		0x02
 #define MEI_ADDRESS_RESERVED	0x03
 #define MEI_ADDRESS_WDT		0x04
+#define MEI_ADDRESS_POLICY	0x05
+#define MEI_ADDRESS_PASSWORD	0x06
 #define MEI_ADDRESS_MKHI	0x07
 #define MEI_ADDRESS_ICC		0x08
 #define MEI_ADDRESS_THERMAL	0x09
+#define MEI_ADDRESS_SPI		0x0a
 
 #define MEI_HOST_ADDRESS	0
 
@@ -175,17 +192,30 @@ struct mei_header {
 } __attribute__ ((packed));
 
 #define MKHI_GROUP_ID_CBM	0x00
+#define MKHI_GROUP_ID_PM	0x01
+#define MKHI_GROUP_ID_PWD	0x02
 #define MKHI_GROUP_ID_FWCAPS	0x03
+#define MKHI_GROUP_ID_APP	0x04
+#define MKHI_GROUP_ID_SPI	0x05
 #define MKHI_GROUP_ID_MDES	0x08
+#define MKHI_GROUP_ID_MAX	0x09
 #define MKHI_GROUP_ID_GEN	0xff
 
+#define MKHI_FWCAPS_GET_RULE	0x02
+#define MKHI_FWCAPS_SET_RULE	0x03
 #define MKHI_GLOBAL_RESET	0x0b
 
-#define MKHI_FWCAPS_GET_RULE	0x02
+#define GEN_GET_MKHI_VERSION	0x01
+#define GEN_GET_FW_VERSION	0x02
+#define GEN_UNCONFIG_NO_PWD	0x0d
+#define GEN_SET_DEBUG_MEM	0x11
 
-#define MKHI_MDES_ENABLE	0x09
+#define FWCAPS_ME_FWU_RULE	0x2e
+#define FWCAPS_OVERRIDE		0x14
 
+#define MKHI_THERMAL_REPORTING  0x00
 #define MKHI_GET_FW_VERSION	0x02
+#define MKHI_MDES_ENABLE	0x09
 #define MKHI_END_OF_POST	0x0c
 #define MKHI_FEATURE_OVERRIDE	0x14
 
@@ -348,4 +378,16 @@ struct me_fwcaps {
 	uint8_t reserved[3];
 } __attribute__ ((packed));
 
+struct me_debug_mem {
+	uint32_t debug_phys;
+        uint32_t debug_size;
+        uint32_t me_phys;
+        uint32_t me_size;
+} __attribute__ ((packed));
+
 void intel_me_status(uint32_t hfs, uint32_t gmes);
+void mkhi_thermal(void);
+void mkhi_hack_me_memory(void);
+uint32_t intel_mei_setup(struct pci_dev *dev);
+
+#endif

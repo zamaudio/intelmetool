@@ -70,7 +70,6 @@ int main(void)
 
 	volatile uint8_t *rcba;
 	uint32_t rcba_phys;
-	volatile uint8_t *pciconfigbase;
 	uint32_t fd2;
 	uint8_t me;
 
@@ -173,6 +172,9 @@ int main(void)
 	} else {
 		printf("\nME has a broken implementation on your board with this BIOS\n");
 	}
+
+	intel_mei_setup(dev);
+	mkhi_get_fwcaps();
 
 	if (fd2 & 0x2) {
 		printf("Re-hiding MEI device...");
