@@ -27,8 +27,8 @@
 #include "me.h"
 #include "mmap.h"
 
-#define read32(addr) (*((volatile uint32_t *) ((void *) addr) ))
-#define write32(addr, val) (*((volatile uint32_t *) ((void *) addr)) = val)
+#define read32(addr) (*((uint32_t *) (addr) ))
+#define write32(addr, val) (*((uint32_t *) (addr)) = val)
 
 static void udelay(uint32_t usecs)
 {
@@ -49,7 +49,7 @@ static const char *me_bios_path_values[] = {
 
 /* MMIO base address for MEI interface */
 static uint32_t mei_base_address;
-static uint8_t mei_mmap;
+static uint8_t *mei_mmap;
 
 #if 1
 static void mei_dump(void *ptr, int dword, int offset, const char *type)
@@ -553,7 +553,7 @@ uint32_t intel_mei_setup(struct pci_dev *dev)
 
 void intel_mei_unmap(void)
 {
-	munmap(&mei_mmap, 0x4000);
+	munmap(mei_mmap, 0x4000);
 }
 
 /* Read the Extend register hash of ME firmware */

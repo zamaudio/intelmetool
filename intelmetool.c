@@ -160,6 +160,6 @@ int main(void)
 		printf("done, ");
 	}
 	printf("exiting\n");
-	munmap(&rcba, size);
+	munmap((void*)rcba, size);
 	return 0;
 }
