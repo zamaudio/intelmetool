@@ -2,7 +2,7 @@ CC= clang
 CFLAGS= -O2 -g
 LIBS= -lpci
 
-INCLUDES= -Ime.h
+INCLUDES= -Ime.h -Immap.h
 
 SRCS= intelmetool.c \
 	  me_status.c \
