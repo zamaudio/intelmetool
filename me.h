@@ -236,6 +236,11 @@ struct me_fw_version {
 	uint16_t recovery_major;
 	uint16_t recovery_build_number;
 	uint16_t recovery_hot_fix;
+
+	uint16_t fitcminor;
+	uint16_t fitcmajor;
+	uint16_t fitcbuildno;
+	uint16_t fitchotfix;
 } __attribute__ ((packed));
 
 
