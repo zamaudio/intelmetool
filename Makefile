@@ -1,8 +1,8 @@
 CC= clang
-CFLAGS= -Wall -O0 -g
-LIBS= -lpci
+CFLAGS= -Wall -O0 -g -m32
+LIBS= -lpci -Lusr/lib -Wl,-rpath=usr/lib
 
-INCLUDES= -Ime.h -Immap.h
+INCLUDES= -I.
 
 SRCS= intelmetool.c \
 	  me_status.c \
