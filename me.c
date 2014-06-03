@@ -100,8 +100,8 @@ static inline void mei_write_dword_ptr(void *ptr, uint32_t offset)
 {
 	uint32_t dword = 0;
 	memcpy(&dword, ptr, sizeof(dword));
-	write32(mei_mmap + offset, dword);
-	mei_dump(ptr, dword, offset, "WRITE");
+	//write32(mei_mmap + offset, dword);
+	mei_dump(ptr, dword, offset, "DUMMY WRITE");
 }
 
 static inline void pci_read_dword_ptr(struct pci_dev *dev, void *ptr, uint32_t offset)
@@ -128,8 +128,8 @@ static inline void read_me_csr(struct mei_csr *csr)
 
 static inline void write_cb(uint32_t dword)
 {
-	write32(mei_mmap + MEI_H_CB_WW, dword);
-	mei_dump(NULL, dword, MEI_H_CB_WW, "WRITE");
+	//write32(mei_mmap + MEI_H_CB_WW, dword);
+	mei_dump(NULL, dword, MEI_H_CB_WW, "DUMMY WRITE");
 }
 
 static inline uint32_t read_cb(void)
@@ -533,8 +533,8 @@ uint32_t intel_mei_setup(struct pci_dev *dev)
 	struct mei_csr host;
 	uint32_t reg32;
 
-	mei_base_address = pci_read_long(dev, 0x10);
-	mei_mmap = map_physical(mei_base_address, 0x4000);
+	mei_base_address = pci_read_long(dev, PCI_BASE_ADDRESS_0);
+	mei_mmap = map_physical(mei_base_address, 0x10);
 
 	/* Ensure Memory and Bus Master bits are set */
 	reg32 = pci_read_long(dev, PCI_COMMAND);
@@ -553,7 +553,7 @@ uint32_t intel_mei_setup(struct pci_dev *dev)
 
 void intel_mei_unmap(void)
 {
-	munmap(mei_mmap, 0x4000);
+	munmap(mei_mmap, 0x10);
 }
 
 /* Read the Extend register hash of ME firmware */
