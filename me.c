@@ -383,11 +383,11 @@ int mkhi_get_fw_version(void)
 	}
 
 	printf("ME: Firmware Version %u.%u.%u.%u (code) "
-	       "%u.%u.%u.%u (recovery)\n",
+	       "%u.%u.?.? (recovery)\n",
 	       version.code_major, version.code_minor,
 	       version.code_build_number, version.code_hot_fix,
-	       version.recovery_major, version.recovery_minor,
-	       version.recovery_build_number, version.recovery_hot_fix);
+	       version.recovery_major, version.recovery_minor); 
+	       //version.recovery_build_number, version.recovery_hot_fix);
 
 	return 0;
 }
