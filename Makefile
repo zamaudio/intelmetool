@@ -1,5 +1,5 @@
 CC= clang
-CFLAGS= -O2 -g
+CFLAGS= -Wall -O0 -g
 LIBS= -lpci
 
 INCLUDES= -Ime.h -Immap.h
