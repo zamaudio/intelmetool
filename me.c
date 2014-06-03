@@ -51,7 +51,7 @@ static const char *me_bios_path_values[] = {
 static uint32_t mei_base_address;
 static uint8_t *mei_mmap;
 
-#if 1
+#if 0
 static void mei_dump(void *ptr, int dword, int offset, const char *type)
 {
 	struct mei_csr *csr;
@@ -100,7 +100,7 @@ static inline void mei_write_dword_ptr(void *ptr, uint32_t offset)
 {
 	uint32_t dword = 0;
 	memcpy(&dword, ptr, sizeof(dword));
-	//write32(mei_mmap + offset, dword);
+	write32(mei_mmap + offset, dword);
 	mei_dump(ptr, dword, offset, "DUMMY WRITE");
 }
 
@@ -128,7 +128,7 @@ static inline void read_me_csr(struct mei_csr *csr)
 
 static inline void write_cb(uint32_t dword)
 {
-	//write32(mei_mmap + MEI_H_CB_WW, dword);
+	write32(mei_mmap + MEI_H_CB_WW, dword);
 	mei_dump(NULL, dword, MEI_H_CB_WW, "DUMMY WRITE");
 }
 
@@ -363,6 +363,7 @@ static int mkhi_end_of_post(void)
 /* Get ME firmware version */
 int mkhi_get_fw_version(void)
 {
+	uint32_t data = 0;
 	struct me_fw_version version;
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,
@@ -376,7 +377,7 @@ int mkhi_get_fw_version(void)
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, NULL, &version, sizeof(version)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(version)) < 0) {
 		printf("ME: GET FW VERSION message failed\n");
 		return -1;
 	}
