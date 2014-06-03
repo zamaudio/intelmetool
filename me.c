@@ -25,9 +25,10 @@
 #include <stdlib.h>
 #include <sys/io.h>
 #include "me.h"
+#include "mmap.h"
 
-#define read32(addr) (*(volatile uint32_t *) ((void *) addr) )
-#define write32(addr, val) (*(volatile uint32_t *) ((void *) addr) = val)
+#define read32(addr) (*((volatile uint32_t *) ((void *) addr) ))
+#define write32(addr, val) (*((volatile uint32_t *) ((void *) addr)) = val)
 
 static void udelay(uint32_t usecs)
 {
@@ -48,23 +49,24 @@ static const char *me_bios_path_values[] = {
 
 /* MMIO base address for MEI interface */
 static uint32_t mei_base_address;
+static uint8_t mei_mmap;
 
-#if 0
+#if 1
 static void mei_dump(void *ptr, int dword, int offset, const char *type)
 {
 	struct mei_csr *csr;
 
-	printk(BIOS_SPEW, "%-9s[%02x] : ", type, offset);
+	printf("%-9s[%02x] : ", type, offset);
 
 	switch (offset) {
 	case MEI_H_CSR:
 	case MEI_ME_CSR_HA:
 		csr = ptr;
 		if (!csr) {
-			printk(BIOS_SPEW, "ERROR: 0x%08x\n", dword);
+			printf("ERROR: 0x%08x\n", dword);
 			break;
 		}
-		printk(BIOS_SPEW, "cbd=%u cbrp=%02u cbwp=%02u ready=%u "
+		printf("cbd=%u cbrp=%02u cbwp=%02u ready=%u "
 		       "reset=%u ig=%u is=%u ie=%u\n", csr->buffer_depth,
 		       csr->buffer_read_ptr, csr->buffer_write_ptr,
 		       csr->ready, csr->reset, csr->interrupt_generate,
@@ -72,10 +74,10 @@ static void mei_dump(void *ptr, int dword, int offset, const char *type)
 		break;
 	case MEI_ME_CB_RW:
 	case MEI_H_CB_WW:
-		printk(BIOS_SPEW, "CB: 0x%08x\n", dword);
+		printf("CB: 0x%08x\n", dword);
 		break;
 	default:
-		printk(BIOS_SPEW, "0x%08x\n", offset);
+		printf("0x%08x\n", offset);
 		break;
 	}
 }
@@ -89,7 +91,7 @@ static void mei_dump(void *ptr, int dword, int offset, const char *type)
 
 static inline void mei_read_dword_ptr(void *ptr, uint32_t offset)
 {
-	uint32_t dword = read32(mei_base_address + offset);
+	uint32_t dword = read32(mei_mmap + offset);
 	memcpy(ptr, &dword, sizeof(dword));
 	mei_dump(ptr, dword, offset, "READ");
 }
@@ -98,7 +100,7 @@ static inline void mei_write_dword_ptr(void *ptr, uint32_t offset)
 {
 	uint32_t dword = 0;
 	memcpy(&dword, ptr, sizeof(dword));
-	write32(mei_base_address + offset, dword);
+	write32(mei_mmap + offset, dword);
 	mei_dump(ptr, dword, offset, "WRITE");
 }
 
@@ -126,13 +128,13 @@ static inline void read_me_csr(struct mei_csr *csr)
 
 static inline void write_cb(uint32_t dword)
 {
-	write32(mei_base_address + MEI_H_CB_WW, dword);
+	write32(mei_mmap + MEI_H_CB_WW, dword);
 	mei_dump(NULL, dword, MEI_H_CB_WW, "WRITE");
 }
 
 static inline uint32_t read_cb(void)
 {
-	uint32_t dword = read32(mei_base_address + MEI_ME_CB_RW);
+	uint32_t dword = read32(mei_mmap + MEI_ME_CB_RW);
 	mei_dump(NULL, dword, MEI_ME_CB_RW, "READ");
 	return dword;
 }
@@ -532,6 +534,7 @@ uint32_t intel_mei_setup(struct pci_dev *dev)
 	uint32_t reg32;
 
 	mei_base_address = pci_read_long(dev, 0x10);
+	mei_mmap = map_physical(mei_base_address, 0x4000);
 
 	/* Ensure Memory and Bus Master bits are set */
 	reg32 = pci_read_long(dev, PCI_COMMAND);
@@ -546,6 +549,11 @@ uint32_t intel_mei_setup(struct pci_dev *dev)
 	write_host_csr(&host);
 
 	return 0;
+}
+
+void intel_mei_unmap(void)
+{
+	munmap(&mei_mmap, 0x4000);
 }
 
 /* Read the Extend register hash of ME firmware */

@@ -389,5 +389,6 @@ void intel_me_status(uint32_t hfs, uint32_t gmes);
 void mkhi_thermal(void);
 void mkhi_hack_me_memory(void);
 uint32_t intel_mei_setup(struct pci_dev *dev);
+void intel_mei_unmap(void);
 
 #endif
