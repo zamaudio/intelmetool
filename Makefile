@@ -1,5 +1,28 @@
-all: me.c me.h mmap.c mmap.h me_status.c intelmetool.c
-	gcc -m32 -Wall intelmetool.c me_status.c me.c mmap.c -o intelmetool -g -lpci 
+CC= clang
+CFLAGS= -O2 -g
+LIBS= -lpci
+
+INCLUDES= -Ime.h
+
+SRCS= intelmetool.c \
+	  me_status.c \
+	  me.c \
+	  mmap.c
+
+OBJS = $(SRCS:.c=.o)
+
+TARGET= intelmetool
+
+
+.PHONY: depend clean
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJS) $(LIBS)
+
+.c.o:
+	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
 
 clean:
-	rm intelmetool *~
+	rm $(TARGET) *.o
