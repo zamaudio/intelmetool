@@ -31,7 +31,8 @@
 #define read32(addr, off) ( *((uint32_t *) (addr + off)) )
 #define write32(addr, off, val) ( *((uint32_t *) (addr + off)) = val)
 
-//#define ARC4 1
+// FIXME: define this for old firmware only
+//#define OLDARC 1
 
 void udelay(uint32_t usecs)
 {
@@ -263,7 +264,7 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	if (rsp_bytes & 3)
 		expected++;
 
-	printf("expected u32 = %d\n", expected);
+	//printf("expected u32 = %d\n", expected);
 	/*
 	 * The interrupt status bit does not appear to indicate that the
 	 * message has actually been received.  Instead we wait until the
@@ -387,19 +388,30 @@ int mkhi_get_fw_version(void)
 		.length		= sizeof(mkhi),
 	};
 
+#ifndef OLDARC
 	/* Send request and wait for response */
 	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(version) ) < 0) {
 		printf("ME: GET FW VERSION message failed\n");
 		return -1;
 	}
-
 	printf("ME: Firmware Version %u.%u.%u.%u (code) "
-	       "%u.%u.%u.%u (recovery)\n",
+	       "%u.%u.%u.%u (recovery) "
+	       "%u.%u.%u.%u (fitc)\n",
 	       version.code_major, version.code_minor,
 	       version.code_build_number, version.code_hot_fix,
 	       version.recovery_major, version.recovery_minor, 
-	       version.recovery_build_number, version.recovery_hot_fix);
-
+	       version.recovery_build_number, version.recovery_hot_fix,
+	       version.fitcmajor, version.fitcminor, 
+	       version.fitcbuildno, version.fitchotfix);
+#else
+	/* Send request and wait for response */
+	if (mei_sendrecv(&mei, &mkhi, &data, &version, 2*sizeof(uint32_t) ) < 0) {
+		printf("ME: GET FW VERSION message failed\n");
+		return -1;
+	}
+	printf("ME: Firmware Version %u.%u (code)\n"
+	       version.code_major, version.code_minor);
+#endif
 	return 0;
 }
 
@@ -407,15 +419,6 @@ static inline void print_cap(const char *name, int state)
 {
 	printf("ME Capability: %-30s : %s\n",
 	       name, state ? "ON" : "OFF");
-}
-
-static inline int old_me_version(void)
-{
-#ifdef ARC4
-	return 1;
-#else
-	return 0;
-#endif
 }
 
 /* Get ME Firmware Capabilities */
@@ -444,8 +447,7 @@ int mkhi_get_fwcaps(void)
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &fwcaps.rule_id, &fwcaps, 
-			old_me_version() ? sizeof(fwcaps) - 2 : sizeof(fwcaps)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &fwcaps.rule_id, &fwcaps, sizeof(fwcaps)) < 0) {
 		printf("ME: GET FWCAPS message failed\n");
 		return -1;
 	}
