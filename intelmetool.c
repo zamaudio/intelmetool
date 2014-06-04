@@ -163,12 +163,15 @@ int main(void)
 	}
 
 	intel_mei_setup(dev);
+	udelay(1000);
 	mei_reset();
+	udelay(10000);
 	mkhi_get_fw_version();
-
-	mei_reset();
-	mkhi_get_fwcaps();
 /*	
+	udelay(10000);
+	mei_reset();
+	udelay(10000);
+	mkhi_get_fwcaps();
 	void *me_clone = malloc(0x2000000);
 	if (me_clone != NULL) {
 		printf("Send magic command for memory clone\n");

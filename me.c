@@ -263,6 +263,7 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	if (rsp_bytes & 3)
 		expected++;
 
+	printf("expected u32 = %d\n", expected);
 	/*
 	 * The interrupt status bit does not appear to indicate that the
 	 * message has actually been received.  Instead we wait until the
@@ -270,8 +271,9 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	 */
 	for (n = ME_RETRY; n; --n) {
 		read_me_csr(&me);
-		//if ((me.buffer_write_ptr - me.buffer_read_ptr) >= expected)
-		if (!me.interrupt_generate && me.interrupt_status)
+		if ((me.buffer_write_ptr - me.buffer_read_ptr) >= expected)
+		//if (me.interrupt_generate && !me.interrupt_status)
+		//if (me.interrupt_status)
 			break;
 		udelay(ME_DELAY);
 	}
@@ -382,7 +384,7 @@ int mkhi_get_fw_version(void)
 		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
-		.length		= sizeof(mkhi) + sizeof(version),
+		.length		= sizeof(mkhi),
 	};
 
 	/* Send request and wait for response */
@@ -421,7 +423,8 @@ int mkhi_get_fwcaps(void)
 {
 	struct {
 		uint32_t rule_id;
-		uint8_t rule_len;
+		uint32_t rule_len;
+
 		struct me_fwcaps cap;
 	} fwcaps;
 
@@ -437,7 +440,7 @@ int mkhi_get_fwcaps(void)
 		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
-		.length		= sizeof(mkhi) + sizeof(fwcaps),
+		.length		= sizeof(mkhi) + 2*sizeof(fwcaps.rule_id),
 	};
 
 	/* Send request and wait for response */
