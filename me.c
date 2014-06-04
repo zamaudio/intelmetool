@@ -71,8 +71,8 @@ static void mei_dump(void *ptr, int dword, int offset, const char *type)
 			printf("ERROR: 0x%08x\n", dword);
 			break;
 		}
-		printf("cbd=%u cbrp=%02u cbwp=%02u ready=%u "
-		       "reset=%u ig=%u is=%u ie=%u\n", csr->buffer_depth,
+		printf("depth=%u read=%02u write=%02u ready=%u "
+		       "reset=%u intgen=%u intstatus=%u intenable=%u\n", csr->buffer_depth,
 		       csr->buffer_read_ptr, csr->buffer_write_ptr,
 		       csr->ready, csr->reset, csr->interrupt_generate,
 		       csr->interrupt_status, csr->interrupt_enable);
@@ -183,7 +183,6 @@ void mei_reset(void)
 	host.ready = 1;
 	host.reset = 0;
 	write_host_csr(&host);
-	udelay(10000);
 }
 
 static int mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
@@ -194,7 +193,7 @@ static int mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	uint32_t *data;
 
 	/* Number of dwords to write, ignoring MKHI */
-	ndata = mei->length >> 2;
+	ndata = (mei->length) >> 2;
 
 	/* Pad non-dword aligned request message length */
 	if (mei->length & 3)
@@ -271,10 +270,8 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	 */
 	for (n = ME_RETRY; n; --n) {
 		read_me_csr(&me);
-		//if (me.interrupt_enable)
-		//	break;
-
 		if ((me.buffer_write_ptr - me.buffer_read_ptr) >= expected)
+		//if (!me.interrupt_generate && me.interrupt_status)
 			break;
 		udelay(ME_DELAY);
 	}
@@ -284,7 +281,6 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 		       me.buffer_write_ptr - me.buffer_read_ptr);
 		return -1;
 	}
-
 	/* Read and verify MEI response header from the ME */
 	mei_read_dword_ptr(&mei_rsp, MEI_ME_CB_RW);
 	if (!mei_rsp.is_complete) {
@@ -375,11 +371,13 @@ int mkhi_get_fw_version(void)
 {
 	uint32_t data = 0;
 	struct me_fw_version version = {0};
+	
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,
 		.command	= GEN_GET_FW_VERSION,
 		.is_response 	= 0,
 	};
+
 	struct mei_header mei = {
 		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
@@ -388,7 +386,7 @@ int mkhi_get_fw_version(void)
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(mkhi) + sizeof(data) + sizeof(version)  ) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(version) ) < 0) {
 		printf("ME: GET FW VERSION message failed\n");
 		return -1;
 	}
