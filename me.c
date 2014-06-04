@@ -270,8 +270,8 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	 */
 	for (n = ME_RETRY; n; --n) {
 		read_me_csr(&me);
-		if ((me.buffer_write_ptr - me.buffer_read_ptr) >= expected)
-		//if (!me.interrupt_generate && me.interrupt_status)
+		//if ((me.buffer_write_ptr - me.buffer_read_ptr) >= expected)
+		if (!me.interrupt_generate && me.interrupt_status)
 			break;
 		udelay(ME_DELAY);
 	}
@@ -382,7 +382,7 @@ int mkhi_get_fw_version(void)
 		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
-		.length		= sizeof(mkhi) + sizeof(data),
+		.length		= sizeof(mkhi) + sizeof(version),
 	};
 
 	/* Send request and wait for response */
@@ -426,7 +426,7 @@ int mkhi_get_fwcaps(void)
 	} fwcaps;
 
 	fwcaps.rule_id = 0;
-	fwcaps.rule_len = 0;
+	fwcaps.rule_len = 1;
 	
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_FWCAPS,
@@ -434,15 +434,15 @@ int mkhi_get_fwcaps(void)
 		.is_response	= 0,
 	};
 	struct mei_header mei = {
-		.is_complete	= 0,
+		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
-		.length		= sizeof(fwcaps.rule_id),
+		.length		= sizeof(mkhi) + sizeof(fwcaps),
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &fwcaps.rule_id, &fwcaps.cap, 
-			old_me_version() ? sizeof(fwcaps.cap) - 2 : sizeof(fwcaps.cap)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &fwcaps.rule_id, &fwcaps, 
+			old_me_version() ? sizeof(fwcaps) - 2 : sizeof(fwcaps)) < 0) {
 		printf("ME: GET FWCAPS message failed\n");
 		return -1;
 	}
