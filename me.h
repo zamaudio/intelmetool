@@ -172,7 +172,8 @@ struct mei_csr {
 	uint32_t buffer_depth: 8;
 } __attribute__ ((packed));
 
-#define MEI_ADDRESS_CORE	0x01
+#define MEI_ADDRESS_HBM		0x00
+#define MEI_ADDRESS_CORE_WD	0x01
 #define MEI_ADDRESS_AMT		0x02
 #define MEI_ADDRESS_RESERVED	0x03
 #define MEI_ADDRESS_WDT		0x04
@@ -220,6 +221,14 @@ struct mei_header {
 #define MKHI_MDES_ENABLE	0x09
 #define MKHI_END_OF_POST	0x0c
 #define MKHI_FEATURE_OVERRIDE	0x14
+
+#define HBM_HOST_START_REQ_CMD                  0x01
+#define HBM_HOST_STOP_REQ_CMD                   0x02
+#define HBM_ME_STOP_REQ_CMD                     0x03
+#define HBM_HOST_ENUM_REQ_CMD                   0x04
+#define HBM_HOST_CLIENT_PROPERTIES_REQ_CMD      0x05
+#define HBM_CLIENT_CONNECT_REQ_CMD              0x06
+#define HBM_CLIENT_DISCONNECT_REQ_CMD           0x07
 
 struct mkhi_header {
 	uint32_t group_id: 8;
@@ -393,7 +402,6 @@ struct me_debug_mem {
 
 void intel_me_status(uint32_t hfs, uint32_t gmes);
 void mkhi_thermal(void);
-void mkhi_hack_me_memory(void);
 uint32_t intel_mei_setup(struct pci_dev *dev);
 void intel_mei_unmap(void);
 int mkhi_get_fwcaps(void);
