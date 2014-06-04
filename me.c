@@ -374,7 +374,7 @@ int mkhi_get_fw_version(void)
 {
 	uint32_t data = 0;
 	struct me_fw_version version = {0};
-
+	
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,
 		.command	= GEN_GET_FW_VERSION,
@@ -399,9 +399,9 @@ int mkhi_get_fw_version(void)
 	       "%u.%u.%u.%u (fitc)\n",
 	       version.code_major, version.code_minor,
 	       version.code_build_number, version.code_hot_fix,
-	       version.recovery_major, version.recovery_minor,
+	       version.recovery_major, version.recovery_minor, 
 	       version.recovery_build_number, version.recovery_hot_fix,
-	       version.fitcmajor, version.fitcminor,
+	       version.fitcmajor, version.fitcminor, 
 	       version.fitcbuildno, version.fitchotfix);
 #else
 	/* Send request and wait for response */
@@ -409,7 +409,7 @@ int mkhi_get_fw_version(void)
 		printf("ME: GET FW VERSION message failed\n");
 		return -1;
 	}
-	printf("ME: Firmware Version %u.%u (code)\n",
+	printf("ME: Firmware Version %u.%u (code)\n"
 	       version.code_major, version.code_minor);
 #endif
 	return 0;
@@ -432,8 +432,8 @@ int mkhi_get_fwcaps(void)
 	} fwcaps;
 
 	fwcaps.rule_id = 0;
-	fwcaps.rule_len = 1;
-
+	fwcaps.rule_len = 0;
+	
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_FWCAPS,
 		.command	= MKHI_FWCAPS_GET_RULE,
@@ -443,11 +443,11 @@ int mkhi_get_fwcaps(void)
 		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
 		.client_address	= MEI_ADDRESS_MKHI,
-		.length		= sizeof(mkhi) + 2*sizeof(fwcaps.rule_id),
+		.length		= sizeof(mkhi) + sizeof(fwcaps.rule_id),
 	};
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &fwcaps.rule_id, &fwcaps, sizeof(fwcaps)) < 0) {
+	if (mei_sendrecv(&mei, &mkhi, &fwcaps.rule_id, &fwcaps.cap, sizeof(fwcaps.cap)) < 0) {
 		printf("ME: GET FWCAPS message failed\n");
 		return -1;
 	}
@@ -536,11 +536,11 @@ void mkhi_thermal(void)
 int mkhi_debug_me_memory(void *physaddr)
 {
 	uint32_t data = 0;
-	assert(sizeof(size_t) == 4);
+	assert(sizeof(size_t) == 4); 
 
 	/* copy whole ME memory to a readable space */
 	struct me_debug_mem memory = {
-		.debug_phys = (size_t)physaddr,
+		.debug_phys = (size_t)physaddr,  
 		.debug_size = 0x2000000,
 		.me_phys = 0x20000000,
 		.me_size = 0x2000000,
