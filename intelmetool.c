@@ -173,7 +173,11 @@ int main(void)
 	mkhi_get_fwcaps();
 	udelay(10000);
 	
-	void *me_clone = malloc(0x1000000);
+	/* You need >4GB total ram, in kernel cmdline, use 'mem=1000m'
+	 * then this code will clone to absolute memory address 0xf0000000
+	 * which can be read using a mmap tool at that offset
+	 */
+	void *me_clone = 0xf0000000;
 	if (me_clone != NULL) {
 		printf("Send magic command for memory clone\n");
 		
@@ -184,9 +188,9 @@ int main(void)
 		if (!err) {
 			printf("Wait a second...");
 			udelay(30000);
-			printf("done\n\n");
+			printf("done\n\nHere are the first bytes:\n");
 			dumpmem(me_clone, 0x1000);
-			printf("Try reading 0x%zx...CTRL-C to quit\n", me_clone);
+			printf("Try reading 0x%zx with other mmap tool...CTRL-C to quit, you only get one chance to run this tool before reboot required\n", me_clone);
 			for(;;);
 		}
 	}
@@ -202,6 +206,6 @@ int main(void)
 	}
 	printf("exiting\n");
 	munmap((void*)rcba, size);
-	free(me_clone);
+	//free(me_clone);
 	return 0;
 }
