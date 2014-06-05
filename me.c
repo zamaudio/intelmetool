@@ -62,27 +62,30 @@ static void mei_dump(void *ptr, int dword, int offset, const char *type)
 {
 	struct mei_csr *csr;
 
-	printf("%-9s[%02x] : ", type, offset);
 
 	switch (offset) {
 	case MEI_H_CSR:
 	case MEI_ME_CSR_HA:
 		csr = ptr;
-		if (!csr) {
+/*		if (!csr) {
+		printf("%-9s[%02x] : ", type, offset);
 			printf("ERROR: 0x%08x\n", dword);
 			break;
 		}
+		printf("%-9s[%02x] : ", type, offset);
 		printf("depth=%u read=%02u write=%02u ready=%u "
 		       "reset=%u intgen=%u intstatus=%u intenable=%u\n", csr->buffer_depth,
 		       csr->buffer_read_ptr, csr->buffer_write_ptr,
 		       csr->ready, csr->reset, csr->interrupt_generate,
 		       csr->interrupt_status, csr->interrupt_enable);
-		break;
+*/		break;
 	case MEI_ME_CB_RW:
 	case MEI_H_CB_WW:
+		printf("%-9s[%02x] : ", type, offset);
 		printf("CB: 0x%08x\n", dword);
 		break;
 	default:
+		printf("%-9s[%02x] : ", type, offset);
 		printf("0x%08x\n", offset);
 		break;
 	}
@@ -541,9 +544,9 @@ int mkhi_debug_me_memory(void *physaddr)
 	/* copy whole ME memory to a readable space */
 	struct me_debug_mem memory = {
 		.debug_phys = (size_t)physaddr,  
-		.debug_size = 0x2000000,
-		.me_phys = 0x20000000,
-		.me_size = 0x2000000,
+		.debug_size = 0x1000000,
+		.me_phys = 0x1000000,
+		.me_size = 0x1000000,
 	};
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,

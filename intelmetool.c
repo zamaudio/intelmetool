@@ -171,22 +171,25 @@ int main(void)
 	mei_reset();
 	udelay(10000);
 	mkhi_get_fwcaps();
-/*	
-	void *me_clone = malloc(0x2000000);
+	udelay(10000);
+	
+	void *me_clone = malloc(0x1000000);
 	if (me_clone != NULL) {
 		printf("Send magic command for memory clone\n");
 		
 		mei_reset();
+		udelay(10000);
 		int err = mkhi_debug_me_memory(me_clone);
 		
 		if (!err) {
 			printf("Wait a second...");
-			udelay(1000000);
+			udelay(30000);
 			printf("done\n\n");
 			dumpmem(me_clone, 0x1000);
+			printf("Try reading 0x%zx...CTRL-C to quit\n", me_clone);
+			for(;;);
 		}
 	}
-*/
 	intel_mei_unmap();
 
 	pci_cleanup(pacc);
@@ -199,6 +202,6 @@ int main(void)
 	}
 	printf("exiting\n");
 	munmap((void*)rcba, size);
-	//free(me_clone);
+	free(me_clone);
 	return 0;
 }
