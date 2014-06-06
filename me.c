@@ -539,11 +539,10 @@ void mkhi_thermal(void)
 int mkhi_debug_me_memory(void *physaddr)
 {
 	uint32_t data = 0;
-	assert(sizeof(size_t) == 4); 
 
 	/* copy whole ME memory to a readable space */
 	struct me_debug_mem memory = {
-		.debug_phys = (size_t)physaddr,  
+		.debug_phys = (uintptr_t)physaddr,  
 		.debug_size = 0x1000000,
 		.me_phys = 0x1000000,
 		.me_size = 0x1000000,

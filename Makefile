@@ -1,6 +1,6 @@
 CC= clang
-CFLAGS= -Wall -O0 -g -m32
-LIBS= -lpci -Lusr/lib -Wl,-rpath=usr/lib
+CFLAGS= -Wall -O0 -g
+LIBS= -lpci
 
 INCLUDES= -I.
 
