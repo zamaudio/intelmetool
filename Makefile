@@ -1,17 +1,17 @@
-CC= clang
+CC= gcc
 CFLAGS= -Wall -O0 -g
 LIBS= -lpci
 
 INCLUDES= -I.
 
-SRCS= intelmetool.c \
+SRCS= unlock.c \
 	  me_status.c \
 	  me.c \
 	  mmap.c
 
 OBJS = $(SRCS:.c=.o)
 
-TARGET= intelmetool
+TARGET= unlock
 
 
 .PHONY: depend clean

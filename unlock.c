@@ -36,7 +36,7 @@ void dumpmem(void *phys, uint32_t size)
 	printf("\n");
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
 	struct pci_access *pacc;
 	struct pci_dev *dev;
@@ -146,62 +146,9 @@ int main(void)
 	}
 
 	printf("MEI found: [%x:%x] %s\n\n", dev->vendor_id, dev->device_id, name);
-	stat = pci_read_long(dev, 0x40);
-	printf("ME Status   : 0x%x\n", stat);
-	stat2 = pci_read_long(dev, 0x48);
-	printf("ME Status 2 : 0x%x\n\n", stat2);
-
-	intel_me_status(stat, stat2);
-	printf("\n");
-	intel_me_extend_valid(dev);
-	printf("\n");
-
-	if ((stat & 0xf000) >> 12 == 0) {
-		printf("ME seems okay on this board\n");
-	} else {
-		printf("ME has a broken implementation on your board with this BIOS\n");
-	}
-
-	intel_mei_setup(dev);
-	udelay(1000);
-	mei_reset();
-	udelay(10000);
-	mkhi_get_fw_version();
-	udelay(10000);
-	mei_reset();
-	udelay(10000);
-	mkhi_get_fwcaps();
-	udelay(10000);
-	
-	/* You need >4GB total ram, in kernel cmdline, use 'mem=1000m'
-	 * then this code will clone to absolute memory address 0xe0000000
-	 * which can be read using a mmap tool at that offset.
-	 * Real ME memory is located around top of memory minus 64MB. (I think)
-	 * so we avoid cloning to this part.
-	 */
-	void *me_clone = (void *)0xe0000000;
-	if (me_clone != NULL) {
-		printf("Send magic command for memory clone\n");
-		
-		mei_reset();
-		udelay(10000);
-		int err = mkhi_debug_me_memory(me_clone);
-		
-		if (!err) {
-			printf("Wait a second...");
-			udelay(30000);
-			printf("done\n\nHere are the first bytes:\n");
-			dumpmem(me_clone, 0x1000);
-			printf("Try reading 0x%zx with other mmap tool...\n"
-				"Press enter to quit, you only get one chance to run this tool before reboot required for some reason\n", me_clone);
-			while (getc(stdin) != '\n') {};
-		}
-	}
-	intel_mei_unmap();
-
 	pci_cleanup(pacc);
 
-	if (fd2 & 0x2) {
+	if (*argv[1] & 1) {
 		printf("Re-hiding MEI device...");
 		fd2 = *(uint32_t *)(rcba + FD2);
 		*(uint32_t *)(rcba + FD2) = fd2 | 0x2;
