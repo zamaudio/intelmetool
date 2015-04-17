@@ -26,7 +26,7 @@
 extern int fd_mem;
 #define FD2 0x3428
 
-void dumpmem(void *phys, uint32_t size)
+void dumpmem(uint8_t *phys, uint32_t size)
 {
 	uint32_t i;
 	printf("Dumping cloned ME memory:\n");
@@ -34,6 +34,24 @@ void dumpmem(void *phys, uint32_t size)
 		printf("%02X",*((uint8_t *) (phys + i)));
 	}
 	printf("\n");
+}
+
+void zeroit(uint8_t *phys, uint32_t size)
+{
+	uint32_t i;
+	for (i = 0; i < size; i++) {
+		*((uint8_t *) (phys + i)) = 0x00;
+	}
+}
+
+void dumpmemfile(uint8_t *phys, uint32_t size)
+{
+	FILE *fp = fopen("medump.bin", "w");
+	uint32_t i;
+	for (i = 0; i < size; i++) {
+		fprintf(fp, "%c", *((uint8_t *) (phys + i)));
+	}
+	fclose(fp);
 }
 
 int main(void)
@@ -179,24 +197,27 @@ int main(void)
 	 * Real ME memory is located around top of memory minus 64MB. (I think)
 	 * so we avoid cloning to this part.
 	 */
-	void *me_clone = (void *)0xe0000000;
-	if (me_clone != NULL) {
-		printf("Send magic command for memory clone\n");
-		
-		mei_reset();
-		udelay(10000);
-		int err = mkhi_debug_me_memory(me_clone);
-		
-		if (!err) {
-			printf("Wait a second...");
-			udelay(30000);
-			printf("done\n\nHere are the first bytes:\n");
-			dumpmem(me_clone, 0x1000);
-			printf("Try reading 0x%zx with other mmap tool...\n"
-				"Press enter to quit, you only get one chance to run this tool before reboot required for some reason\n", me_clone);
-			while (getc(stdin) != '\n') {};
-		}
+	uint32_t me_clone = 0x60000000;
+	volatile uint8_t *dump;
+	dump = map_physical_exact(me_clone, me_clone, 0x2000000);
+	zeroit(dump, 0x2000000);
+	printf("Send magic command for memory clone\n");
+
+	mei_reset();
+	udelay(10000);
+	int err = mkhi_debug_me_memory(me_clone);
+
+	if (!err) {
+		printf("Wait a second...");
+		udelay(30000);
+		printf("done\n\nHere are the first bytes:\n");
+		dumpmemfile(dump, 0x2000000);
+		printf("Try reading 0x%zx with other mmap tool...\n"
+			"Press enter to quit, you only get one chance to run this tool before reboot required for some reason\n", me_clone);
+		while (getc(stdin) != '\n') {};
+		unmap_physical(dump, 0x2000000);
 	}
+
 	intel_mei_unmap();
 
 	pci_cleanup(pacc);

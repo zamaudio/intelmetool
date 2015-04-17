@@ -543,9 +543,9 @@ int mkhi_debug_me_memory(void *physaddr)
 	/* copy whole ME memory to a readable space */
 	struct me_debug_mem memory = {
 		.debug_phys = (uintptr_t)physaddr,  
-		.debug_size = 0x1000000,
-		.me_phys = 0x1000000,
-		.me_size = 0x1000000,
+		.debug_size = 0x2000000,
+		.me_phys = 0x20000000,
+		.me_size = 0x2000000,
 	};
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,
@@ -574,9 +574,11 @@ uint32_t intel_mei_setup(struct pci_dev *dev)
 {
 	struct mei_csr host;
 	uint32_t reg32;
+	uint32_t pagerounded;
 
 	mei_base_address = dev->base_addr[0] & ~0xf;
-	mei_mmap = map_physical(mei_base_address, 0x10);
+	pagerounded = mei_base_address & ~0xfff;
+	mei_mmap = map_physical(pagerounded, 0x2000) + mei_base_address - pagerounded;
 
 	/* Ensure Memory and Bus Master bits are set */
 	reg32 = pci_read_long(dev, PCI_COMMAND);
@@ -595,7 +597,7 @@ uint32_t intel_mei_setup(struct pci_dev *dev)
 
 void intel_mei_unmap(void)
 {
-	munmap(mei_mmap, 0x10);
+	//munmap(mei_mmap, 0x2000);
 }
 
 /* Read the Extend register hash of ME firmware */
