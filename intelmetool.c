@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include "me.h"
 #include "mmap.h"
+#include "intelmetool.h"
 
 extern int fd_mem;
 #define FD2 0x3428
@@ -82,24 +83,77 @@ int main(void)
 	pacc->method = PCI_ACCESS_I386_TYPE1;
 	pci_init(pacc);
 	pci_scan_bus(pacc);
+	me = ME_FOUND_NOTHING;
+	for (dev=pacc->devices; dev; dev=dev->next) {
+		pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_SIZES | PCI_FILL_CLASS);
+		name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), 
+			PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
+		if (dev->vendor_id == 0x8086) {
+			if (PCI_DEV_NO_ME(dev->device_id)) {
+				me = ME_NOT_PRESENT;
+				break;
+			}
+			if (PCI_DEV_HAS_ME_DISABLE(dev->device_id)) {
+				me = ME_PRESENT_CAN_DISABLE;
+				break;
+			}
+			if (PCI_DEV_HAS_ME_DIFFICULT(dev->device_id)) {
+				me = ME_PRESENT_CANNOT_DISABLE;
+				break;
+			}
+			if (PCI_DEV_CAN_DISABLE_ME_IF_PRESENT(dev->device_id)) {
+				me = ME_CAN_DISABLE_IF_PRESENT;
+				break;
+			}
+			if (PCI_DEV_ME_NOT_SURE(dev->device_id)) {
+				me = ME_FOUND_SOMETHING_NOT_SURE;
+				break;
+			}
+		}
+	}
+
+	switch (me) {
+		case ME_FOUND_NOTHING:
+			printf("Chipset unsupported, exiting\n");
+			pci_cleanup(pacc);
+			exit(ME_FOUND_NOTHING);
+			break;
+		case ME_FOUND_SOMETHING_NOT_SURE:
+			printf("Found: %s, not sure whether you have ME hardware, exiting\n", name);
+			pci_cleanup(pacc);
+			exit(ME_FOUND_SOMETHING_NOT_SURE);
+			break;
+		case ME_NOT_PRESENT:
+			printf("ME is not present on your board because we found a `%s`, you are safe, exiting\n", name);
+			pci_cleanup(pacc);
+			exit(ME_NOT_PRESENT);
+			break;
+		case ME_CAN_DISABLE_IF_PRESENT:
+			printf("Not sure if ME hardware is present because you have a `%s`, but it is possible to disable it if you do, continuing...\n", name);
+			break;
+		case ME_PRESENT_CANNOT_DISABLE:
+			printf("Bad news, we found a `%s` so it like you have a ME and it is very difficult to remove, continuing...\n", name);
+			break;
+		default:
+			printf("Something horrible happened, exiting\n");
+			pci_cleanup(pacc);
+			exit(1);
+			break;
+	}
+
+
+	pacc = pci_alloc();
+	pacc->method = PCI_ACCESS_I386_TYPE1;
+	pci_init(pacc);
+	pci_scan_bus(pacc);
 	sb = pci_get_dev(pacc, 0, 0, 0x1f, 0);
-	
-	pci_fill_info(sb, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_SIZES | PCI_FILL_CLASS);
-	
-	name = pci_lookup_name(pacc, namebuf, sizeof(namebuf), 
-		PCI_LOOKUP_DEVICE, sb->vendor_id, sb->device_id);
-	printf("Southbridge: %s\n", name);
-	if ((sb->vendor_id == 0x8086) && (
-		((sb->device_id & 0x00f0) == 0x0000) ||
-		((sb->device_id & 0x00f0) == 0x0010) ||
-		((sb->device_id & 0x00f0) == 0x0040) ||
-		((sb->device_id & 0x00f0) == 0x0050))) {
-		printf("Chipset supported and has ME\n");
-	} else {
-		printf("Chipset unsupported, exiting\n");
+	if (!sb) {
+		printf("Uh oh, southbridge not on BDF(0:31:0), please report this error, exiting.\n");
 		pci_cleanup(pacc);
 		exit(1);
 	}
+	pci_fill_info(sb, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_SIZES | PCI_FILL_CLASS);
+	
 	/* Enable MEI */
 	rcba_phys = pci_read_long(sb, 0xf0) & 0xfffffffe;
 	rcba = map_physical(rcba_phys, size);
@@ -125,25 +179,30 @@ int main(void)
 			PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
 		if (dev->vendor_id == 0x8086) {
 			switch (dev->device_id) {
-				case 0x2364:  // ?
-				case 0x2a50:  // ?
-				case 0x2974:  /* 82946GZ/GL */
-				case 0x2984:  /* 82G35 Express */
-				case 0x2994:  /* 82Q963/Q965 */
-				case 0x29A4:  /* 82P965/G965 */
-				case 0x2A04:  /* Mobile PM965/GM965 */
-				case 0x2A14:  /* Mobile GME965/GLE960 */
-				case 0x29B4:  /* 82Q35 Express */
-				case 0x29C4:  /* 82G33/G31/P35/P31 Express */
-				case 0x29D4:  /* 82Q33 Express */
-				case 0x29E4:  /* 82X38/X48 Express */
-				case 0x29F4:  /* 3200/3210 Server */
+				case 0x1C3A:  /* Cougar Point */
+				case 0x1CBA:  /* Panther Point */
+				case 0x1D3A:  /* C600/X79 Patsburg */
+				case 0x1DBA:  /* Panther Point */
+				case 0x1E3A:  /* Panther Point */
+				case 0x2364:  /* Cave Creek */
 				case 0x28B4:  /* Bearlake */
 				case 0x28C4:  /* Bearlake */
 				case 0x28D4:  /* Bearlake */
 				case 0x28E4:  /* Bearlake */
 				case 0x28F4:  /* Bearlake */
+				case 0x2974:  /* 82946GZ/GL */
+				case 0x2984:  /* 82G35 Express */
+				case 0x2994:  /* 82Q963/Q965 */
+				case 0x29A4:  /* 82P965/G965 */
+				case 0x29B4:  /* 82Q35 Express */
+				case 0x29C4:  /* 82G33/G31/P35/P31 Express */
+				case 0x29D4:  /* 82Q33 Express */
+				case 0x29E4:  /* 82X38/X48 Express */
+				case 0x29F4:  /* 3200/3210 Server */
+				case 0x2A04:  /* Mobile PM965/GM965 */
+				case 0x2A14:  /* Mobile GME965/GLE960 */
 				case 0x2A44:  /* Cantiga */
+				case 0x2a50:  /* Cantiga */
 				case 0x2A54:  /* Cantiga */
 				case 0x2A64:  /* Cantiga */
 				case 0x2A74:  /* Cantiga */
@@ -153,15 +212,10 @@ int main(void)
 				case 0x2E34:  /* Eaglelake */
 				case 0x3B64:  /* Calpella */
 				case 0x3B65:  /* Calpella */
-				case 0x1C3A:  /* Cougar Point */
-				case 0x1D3A:  /* C600/X79 Patsburg */
-				case 0x1E3A:  /* Panther Point */
-				case 0x1CBA:  /* Panther Point */
-				case 0x1DBA:  /* Panther Point */
 				case 0x8C3A:  /* Lynx Point H */
+				case 0x8CBA:  /* Lynx Point H Refresh */
 				case 0x8D3A:  /* Lynx Point - Wellsburg */
 				case 0x9C3A:  /* Lynx Point LP */
-				case 0x8CBA:  /* Lynx Point H Refresh */
 				case 0x9CBA:  /* Wildcat Point LP */
 				case 0x9CBB:  /* Wildcat Point LP 2 */
 					me = 1;
@@ -174,7 +228,7 @@ int main(void)
 		if (me) break;
 	}
 	if (me == 0) {
-		printf("MEI device not found\n");
+		printf("MEI device not found, huh?\n");
 		if (fd2 & 0x2) {
 			printf("Re-hiding MEI device...");
 			fd2 = *(uint32_t *)(rcba + FD2);
@@ -221,6 +275,7 @@ int main(void)
 	 * Real ME memory is located around top of memory minus 64MB. (I think)
 	 * so we avoid cloning to this part.
 	 */
+/*
 	uint32_t me_clone = 0x60000000;
 	volatile uint8_t *dump;
 	dump = map_physical_exact(me_clone, me_clone, 0x2000000);
@@ -241,7 +296,7 @@ int main(void)
 		while (getc(stdin) != '\n') {};
 		unmap_physical(dump, 0x2000000);
 	}
-
+*/
 	intel_mei_unmap();
 
 	pci_cleanup(pacc);
