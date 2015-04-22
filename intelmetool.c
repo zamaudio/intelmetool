@@ -114,12 +114,12 @@ int main(void)
 
 	switch (me) {
 		case ME_FOUND_NOTHING:
-			printf("Chipset unsupported, exiting\n");
+			printf("Hardware unsupported by intelmetool, exiting\n");
 			pci_cleanup(pacc);
 			exit(ME_FOUND_NOTHING);
 			break;
 		case ME_FOUND_SOMETHING_NOT_SURE:
-			printf("Found: %s, not sure whether you have ME hardware, exiting\n", name);
+			printf("Found `%s`. Not sure whether you have ME hardware, exiting\n", name);
 			pci_cleanup(pacc);
 			exit(ME_FOUND_SOMETHING_NOT_SURE);
 			break;
@@ -132,7 +132,7 @@ int main(void)
 			printf("Not sure if ME hardware is present because you have a `%s`, but it is possible to disable it if you do, continuing...\n", name);
 			break;
 		case ME_PRESENT_CANNOT_DISABLE:
-			printf("Bad news, we found a `%s` so it like you have a ME and it is very difficult to remove, continuing...\n", name);
+			printf("Bad news, you have a `%s` so you have ME hardware on board and it is very difficult to remove, continuing...\n", name);
 			break;
 		default:
 			printf("Something horrible happened, exiting\n");
