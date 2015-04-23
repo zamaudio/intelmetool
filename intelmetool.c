@@ -134,6 +134,9 @@ int main(void)
 		case ME_PRESENT_CANNOT_DISABLE:
 			printf("Bad news, you have a `%s` so you have ME hardware on board and it is very difficult to remove, continuing...\n", name);
 			break;
+		case ME_PRESENT_CAN_DISABLE:
+			printf("Good news, you have a `%s` so ME is present but can be disabled, continuing...\n", name);
+			break;
 		default:
 			printf("Something horrible happened, exiting\n");
 			pci_cleanup(pacc);
