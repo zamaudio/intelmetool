@@ -103,10 +103,12 @@
 // Definitely has ME and can be disabled
 #define PCI_DEVICE_ID_INTEL_ICH8ME		0x2811
 #define PCI_DEVICE_ID_INTEL_ICH9ME		0x2917
+#define PCI_DEVICE_ID_INTEL_ICH9M		0x2919
 
 #define PCI_DEV_HAS_ME_DISABLE(x) ( \
 	( (x) == PCI_DEVICE_ID_INTEL_ICH8ME ) || \
-	( (x) == PCI_DEVICE_ID_INTEL_ICH9ME ))
+	( (x) == PCI_DEVICE_ID_INTEL_ICH9ME ) || \
+	( (x) == PCI_DEVICE_ID_INTEL_ICH9M  ))
 
 // Definitely has ME and is very difficult to remove
 #define PCI_DEVICE_ID_INTEL_ICH10R		0x3a16
@@ -223,7 +225,6 @@
 #define PCI_DEVICE_ID_INTEL_ICH9DO		0x2914
 #define PCI_DEVICE_ID_INTEL_ICH9R		0x2916
 #define PCI_DEVICE_ID_INTEL_ICH9		0x2918
-#define PCI_DEVICE_ID_INTEL_ICH9M		0x2919
 
 #define PCI_DEV_CAN_DISABLE_ME_IF_PRESENT(x) ( \
 	( (x) == PCI_DEVICE_ID_INTEL_ICH8	) || \
@@ -231,8 +232,7 @@
 	( (x) == PCI_DEVICE_ID_INTEL_ICH9DH	) || \
 	( (x) == PCI_DEVICE_ID_INTEL_ICH9DO	) || \
 	( (x) == PCI_DEVICE_ID_INTEL_ICH9R	) || \
-	( (x) == PCI_DEVICE_ID_INTEL_ICH9	) || \
-	( (x) == PCI_DEVICE_ID_INTEL_ICH9M	))
+	( (x) == PCI_DEVICE_ID_INTEL_ICH9	))
 
 // Not sure at all
 #define PCI_DEVICE_ID_INTEL_SCH_POULSBO_LPC	0x8119
