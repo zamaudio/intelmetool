@@ -163,6 +163,12 @@
 #define PCI_DEVICE_ID_INTEL_LYNXPOINT_LP_FULL	0x9c41
 #define PCI_DEVICE_ID_INTEL_LYNXPOINT_LP_PREM	0x9c43
 #define PCI_DEVICE_ID_INTEL_LYNXPOINT_LP_BASE	0x9c45
+#define PCI_DEVICE_ID_INTEL_H81			0x8c5c
+#define PCI_DEVICE_ID_INTEL_B85			0x8c50
+#define PCI_DEVICE_ID_INTEL_Q85			0x8c4c
+#define PCI_DEVICE_ID_INTEL_Q87			0x8c4e
+#define PCI_DEVICE_ID_INTEL_H87			0x8c4a
+#define PCI_DEVICE_ID_INTEL_Z87			0x8c44
 
 #define PCI_DEV_HAS_ME_DIFFICULT(x) ( \
 	( (x) == PCI_DEVICE_ID_INTEL_ICH10R ) || \
@@ -216,7 +222,14 @@
 	( (x) == PCI_DEVICE_ID_INTEL_DH89XXCC	) || \
 	( (x) == PCI_DEVICE_ID_INTEL_LYNXPOINT_LP_FULL ) || \
 	( (x) == PCI_DEVICE_ID_INTEL_LYNXPOINT_LP_PREM ) || \
-	( (x) == PCI_DEVICE_ID_INTEL_LYNXPOINT_LP_BASE ))
+	( (x) == PCI_DEVICE_ID_INTEL_LYNXPOINT_LP_BASE ) || \
+	( (x) == PCI_DEVICE_ID_INTEL_H81 ) || \
+	( (x) == PCI_DEVICE_ID_INTEL_B85 ) || \
+	( (x) == PCI_DEVICE_ID_INTEL_Q85 ) || \
+	( (x) == PCI_DEVICE_ID_INTEL_Q87 ) || \
+	( (x) == PCI_DEVICE_ID_INTEL_H87 ) || \
+	( (x) == PCI_DEVICE_ID_INTEL_Z87 ) || \
+	0)
 
 // Not sure if ME present, but should be able to disable it easily
 #define PCI_DEVICE_ID_INTEL_ICH8		0x2810
