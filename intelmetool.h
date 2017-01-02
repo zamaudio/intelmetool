@@ -169,6 +169,7 @@
 #define PCI_DEVICE_ID_INTEL_Q87			0x8c4e
 #define PCI_DEVICE_ID_INTEL_H87			0x8c4a
 #define PCI_DEVICE_ID_INTEL_Z87			0x8c44
+#define PCI_DEVICE_ID_INTEL_SUNRISE		0x9d3a
 
 #define PCI_DEV_HAS_ME_DIFFICULT(x) ( \
 	( (x) == PCI_DEVICE_ID_INTEL_ICH10R ) || \
@@ -229,6 +230,7 @@
 	( (x) == PCI_DEVICE_ID_INTEL_Q87 ) || \
 	( (x) == PCI_DEVICE_ID_INTEL_H87 ) || \
 	( (x) == PCI_DEVICE_ID_INTEL_Z87 ) || \
+	( (x) == PCI_DEVICE_ID_INTEL_SUNRISE ) || \
 	0)
 
 // Not sure if ME present, but should be able to disable it easily
