@@ -222,6 +222,8 @@ int main(void)
 				case 0x9CBA:  /* Wildcat Point LP */
 				case 0x9CBB:  /* Wildcat Point LP 2 */
 				case 0x9D3A:  /* Sunrise Point-LP */
+				case 0xA13A:  /* Sunrise Point-H #1 */
+				case 0xA13B:  /* Sunrise Point-H #2 */
 					me = 1;
 					break;
 				default:
