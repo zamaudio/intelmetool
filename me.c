@@ -161,7 +161,7 @@ static int mei_wait_for_me_ready(void)
 		udelay(ME_DELAY);
 	}
 
-	printf("ME: failed to become ready\n");
+	printf("ME: failed to become ready, maybe the 'mei_me' driver is not loaded.\n");
 	return -1;
 }
 
