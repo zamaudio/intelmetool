@@ -8,7 +8,7 @@ void *map_physical_exact(uint64_t phys_addr, uint64_t mapto, size_t len)
         void *virt_addr;
 	int err;
 
-        virt_addr = mmap(mapto, len, PROT_WRITE | PROT_READ, MAP_SHARED|MAP_FIXED,
+        virt_addr = mmap((void*)mapto, len, PROT_WRITE | PROT_READ, MAP_SHARED|MAP_FIXED,
                     fd_mem, (off_t) phys_addr);
 
         if (virt_addr == MAP_FAILED) {
