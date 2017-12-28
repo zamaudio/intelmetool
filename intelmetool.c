@@ -224,6 +224,13 @@ int main(void)
 				case 0x9D3A:  /* Sunrise Point-LP */
 				case 0xA13A:  /* Sunrise Point-H #1 */
 				case 0xA13B:  /* Sunrise Point-H #2 */
+				case 0xA13E:  /* Sunrise Point-H #3 */
+				case 0xA1BA:  /* CSME Lewisburg #1 */
+				case 0xA1BB:  /* CSME Lewisburg #2 */
+				case 0xA1BE:  /* CSME Lewisburg #3 */
+				case 0xA1F8:  /* IE Lewisburg #1 */
+				case 0xA1F9:  /* IE Lewisburg #2 */
+				case 0xA1FC:  /* IE Lewisburg #3 */
 					me = 1;
 					break;
 				default:
