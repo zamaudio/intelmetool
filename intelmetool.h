@@ -1,22 +1,25 @@
 /*
- * intelmetool
+ * Copyright (C) 2015 Damien Zammit
  *
+ * This file was created by examining "inteltool" and categorizing chipsets
+ * by noticing that the Southbridge/LPC device identifies the chipset.
+ * All PCI IDs in this file should refer to a Southbridge/LPC device.
+ * It forms most of the detection logic of intelmetool and is subject to
+ * additions or improvements when new information is available.
+ *
+ * Original coreboot "inteltool" work done by:
  * Copyright (C) 2008-2010 by coresystems GmbH
  * Copyright (C) 2009 Carl-Daniel Hailfinger
- * Copyright (C) 2015 Damien Zammit
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; version 2 of the License.
+ * the Free Software Foundation; either version 2 of the License
+ * or (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #define ME_NOT_PRESENT 0
