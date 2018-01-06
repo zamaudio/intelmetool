@@ -26,6 +26,7 @@ static struct pci_driver notme_driver;
 //MODULE_PARM_DESC(oldarc, "If set to 1, assume older 1.5MB Damagement Engine firmware");
 
 static struct pci_device_id notme_ids[ ] = {
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1A9A) },  /* Broxton M */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1C3A) },  /* Cougar Point */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1CBA) },  /* Panther Point */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x1D3A) },  /* C600/X79 Patsburg */
@@ -49,7 +50,7 @@ static struct pci_device_id notme_ids[ ] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2A04) },  /* Mobile PM965/GM965 */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2A14) },  /* Mobile GME965/GLE960 */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2A44) },  /* Cantiga */
-	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2a50) },  /* Cantiga */
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2A50) },  /* Cantiga */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2A54) },  /* Cantiga */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2A64) },  /* Cantiga */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2A74) },  /* Cantiga */
@@ -57,15 +58,18 @@ static struct pci_device_id notme_ids[ ] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2E14) },  /* Eaglelake */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2E24) },  /* Eaglelake */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x2E34) },  /* Eaglelake */
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x319A) },  /* Gemini Lake */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x3B64) },  /* Calpella */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x3B65) },  /* Calpella */
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x5A9A) },  /* Apollo Lake I */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x8C3A) },  /* Lynx Point H */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x8CBA) },  /* Lynx Point H Refresh */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x8D3A) },  /* Lynx Point - Wellsburg */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x9C3A) },  /* Lynx Point LP */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x9CBA) },  /* Wildcat Point LP */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x9CBB) },  /* Wildcat Point LP 2 */
-	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x9D3A) },  /* Sunrise Point-LP */
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x9D3A) },  /* Sunrise Point #1 */
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x9D3B) },  /* Sunrise Point #2 */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0xA13A) },  /* Sunrise Point-H #1 */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0xA13B) },  /* Sunrise Point-H #2 */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0xA13E) },  /* Sunrise Point-H #3 */
@@ -75,8 +79,11 @@ static struct pci_device_id notme_ids[ ] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0xA1F8) },  /* IE Lewisburg #1 */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0xA1F9) },  /* IE Lewisburg #2 */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0xA1FC) },  /* IE Lewisburg #3 */
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0xA2BA) },  /* Kaby Point #1 */
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0xA2BB) },  /* Kaby Point #2 */
 	{ 0, },
 };
+
 
 MODULE_DEVICE_TABLE(pci, notme_ids);
 
