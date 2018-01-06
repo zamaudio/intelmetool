@@ -1,28 +1,8 @@
-CC= gcc
-CFLAGS= -Wall -O0 -g
-LIBS= -lpci
+notme-objs := me.o me_status.o mekernel.o
+obj-m += notme.o
 
-INCLUDES= -I.
-
-SRCS= intelmetool.c \
-	  me_status.c \
-	  me.c \
-	  mmap.c
-
-OBJS = $(SRCS:.c=.o)
-
-TARGET= intelmetool
-
-
-.PHONY: depend clean
-
-all: $(TARGET)
-
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) -o $(TARGET) $(OBJS) $(LIBS)
-
-.c.o:
-	$(CC) $(CFLAGS) $(INCLUDES) -c $<  -o $@
+all:
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 clean:
-	rm $(TARGET) *.o
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean

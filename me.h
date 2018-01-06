@@ -2,7 +2,7 @@
  * This file is part of the coreboot project.
  *
  * Copyright (C) 2011 The Chromium OS Authors. All rights reserved.
- * Copyright (C) 2013 Damien Zammit <damien@zamaudio.com>
+ * Copyright (C) 2014 Damien Zammit <damien@zamaudio.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -13,18 +13,16 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
- * MA 02110-1301 USA
  */
 
 #ifndef ME_H
 #define ME_H
 
-#include <inttypes.h>
-#include <pci/pci.h>
+#include <linux/kernel.h>
+#include <linux/pci.h>
+#include <asm/types.h>
+#include <asm/io.h>
+#include <asm/page.h>
 
 #define ME_RETRY                100000  /* 1 second */
 #define ME_DELAY                10      /* 10 us */
@@ -69,29 +67,29 @@
 #define  ME_HFS_ACK_CONTINUE	7
 
 struct me_hfs {
-	uint32_t working_state: 4;
-	uint32_t mfg_mode: 1;
-	uint32_t fpt_bad: 1;
-	uint32_t operation_state: 3;
-	uint32_t fw_init_complete: 1;
-	uint32_t ft_bup_ld_flr: 1;
-	uint32_t update_in_progress: 1;
-	uint32_t error_code: 4;
-	uint32_t operation_mode: 4;
-	uint32_t reserved: 4;
-	uint32_t boot_options_present: 1;
-	uint32_t ack_data: 3;
-	uint32_t bios_msg_ack: 4;
+	__u32 working_state: 4;
+	__u32 mfg_mode: 1;
+	__u32 fpt_bad: 1;
+	__u32 operation_state: 3;
+	__u32 fw_init_complete: 1;
+	__u32 ft_bup_ld_flr: 1;
+	__u32 update_in_progress: 1;
+	__u32 error_code: 4;
+	__u32 operation_mode: 4;
+	__u32 reserved: 4;
+	__u32 boot_options_present: 1;
+	__u32 ack_data: 3;
+	__u32 bios_msg_ack: 4;
 } __attribute__ ((packed));
 
 #define PCI_ME_UMA		0x44
 
 struct me_uma {
-	uint32_t size: 6;
-	uint32_t reserved_1: 10;
-	uint32_t valid: 1;
-	uint32_t reserved_0: 14;
-	uint32_t set_to_one: 1;
+	__u32 size: 6;
+	__u32 reserved_1: 10;
+	__u32 valid: 1;
+	__u32 reserved_0: 14;
+	__u32 set_to_one: 1;
 } __attribute__ ((packed));
 
 #define PCI_ME_H_GS		0x4c
@@ -101,10 +99,10 @@ struct me_uma {
 #define  ME_INIT_STATUS_ERROR	2
 
 struct me_did {
-	uint32_t uma_base: 16;
-	uint32_t reserved: 8;
-	uint32_t status: 4;
-	uint32_t init_done: 4;
+	__u32 uma_base: 16;
+	__u32 reserved: 8;
+	__u32 status: 4;
+	__u32 init_done: 4;
 } __attribute__ ((packed));
 
 #define PCI_ME_GMES		0x48
@@ -117,20 +115,20 @@ struct me_did {
 #define  ME_GMES_PHASE_HOST	6
 
 struct me_gmes {
-	uint32_t bist_in_prog : 1;
-	uint32_t icc_prog_sts : 2;
-	uint32_t invoke_mebx : 1;
-	uint32_t cpu_replaced_sts : 1;
-	uint32_t mbp_rdy : 1;
-	uint32_t mfs_failure : 1;
-	uint32_t warm_rst_req_for_df : 1;
-	uint32_t cpu_replaced_valid : 1;
-	uint32_t reserved_1 : 2;
-	uint32_t fw_upd_ipu : 1;
-	uint32_t reserved_2 : 4;
-	uint32_t current_state: 8;
-	uint32_t current_pmevent: 4;
-	uint32_t progress_code: 4;
+	__u32 bist_in_prog : 1;
+	__u32 icc_prog_sts : 2;
+	__u32 invoke_mebx : 1;
+	__u32 cpu_replaced_sts : 1;
+	__u32 mbp_rdy : 1;
+	__u32 mfs_failure : 1;
+	__u32 warm_rst_req_for_df : 1;
+	__u32 cpu_replaced_valid : 1;
+	__u32 reserved_1 : 2;
+	__u32 fw_upd_ipu : 1;
+	__u32 reserved_2 : 4;
+	__u32 current_state: 8;
+	__u32 current_pmevent: 4;
+	__u32 progress_code: 4;
 } __attribute__ ((packed));
 
 #define PCI_ME_HERES		0xbc
@@ -139,17 +137,17 @@ struct me_gmes {
 #define PCI_ME_HER(x)		(0xc0+(4*(x)))
 
 struct me_heres {
-	uint32_t extend_reg_algorithm: 4;
-	uint32_t reserved: 26;
-	uint32_t extend_feature_present: 1;
-	uint32_t extend_reg_valid: 1;
+	__u32 extend_reg_algorithm: 4;
+	__u32 reserved: 26;
+	__u32 extend_feature_present: 1;
+	__u32 extend_reg_valid: 1;
 } __attribute__ ((packed));
 
 struct me_thermal_reporting {
-	uint32_t polling_timeout: 8;
-	uint32_t smbus_ec_msglen: 8;
-	uint32_t smbus_ec_msgpec: 8;
-	uint32_t dimmnumber: 8;
+	__u32 polling_timeout: 8;
+	__u32 smbus_ec_msglen: 8;
+	__u32 smbus_ec_msgpec: 8;
+	__u32 dimmnumber: 8;
 } __attribute__ ((packed));
 
 /*
@@ -162,15 +160,15 @@ struct me_thermal_reporting {
 #define MEI_ME_CSR_HA		0x0c
 
 struct mei_csr {
-	uint32_t interrupt_enable: 1;
-	uint32_t interrupt_status: 1;
-	uint32_t interrupt_generate: 1;
-	uint32_t ready: 1;
-	uint32_t reset: 1;
-	uint32_t reserved: 3;
-	uint32_t buffer_read_ptr: 8;
-	uint32_t buffer_write_ptr: 8;
-	uint32_t buffer_depth: 8;
+	__u32 interrupt_enable: 1;
+	__u32 interrupt_status: 1;
+	__u32 interrupt_generate: 1;
+	__u32 ready: 1;
+	__u32 reset: 1;
+	__u32 reserved: 3;
+	__u32 buffer_read_ptr: 8;
+	__u32 buffer_write_ptr: 8;
+	__u32 buffer_depth: 8;
 } __attribute__ ((packed));
 
 #define MEI_ADDRESS_HBM		0x00
@@ -188,11 +186,11 @@ struct mei_csr {
 #define MEI_HOST_ADDRESS	0
 
 struct mei_header {
-	uint32_t client_address: 8;
-	uint32_t host_address: 8;
-	uint32_t length: 9;
-	uint32_t reserved: 6;
-	uint32_t is_complete: 1;
+	__u32 client_address: 8;
+	__u32 host_address: 8;
+	__u32 length: 9;
+	__u32 reserved: 6;
+	__u32 is_complete: 1;
 } __attribute__ ((packed));
 
 #define MKHI_GROUP_ID_CBM	0x00
@@ -232,26 +230,26 @@ struct mei_header {
 #define HBM_CLIENT_DISCONNECT_REQ_CMD           0x07
 
 struct mkhi_header {
-	uint32_t group_id: 8;
-	uint32_t command: 7;
-	uint32_t is_response: 1;
-	uint32_t reserved: 8;
-	uint32_t result: 8;
+	__u32 group_id: 8;
+	__u32 command: 7;
+	__u32 is_response: 1;
+	__u32 reserved: 8;
+	__u32 result: 8;
 } __attribute__ ((packed));
 
 struct me_fw_version {
-	uint16_t code_minor;
-	uint16_t code_major;
-	uint16_t code_build_number;
-	uint16_t code_hot_fix;
-	uint16_t recovery_minor;
-	uint16_t recovery_major;
-	uint16_t recovery_build_number;
-	uint16_t recovery_hot_fix;
-	uint16_t fitcminor;
-	uint16_t fitcmajor;
-	uint16_t fitcbuildno;
-	uint16_t fitchotfix;
+	__u16 code_minor;
+	__u16 code_major;
+	__u16 code_build_number;
+	__u16 code_hot_fix;
+	__u16 recovery_minor;
+	__u16 recovery_major;
+	__u16 recovery_build_number;
+	__u16 recovery_hot_fix;
+	__u16 fitcminor;
+	__u16 fitcmajor;
+	__u16 fitcbuildno;
+	__u16 fitchotfix;
 } __attribute__ ((packed));
 
 
@@ -265,8 +263,8 @@ struct me_fw_version {
 #define GLOBAL_RESET_MEBX	0x03
 
 struct me_global_reset {
-	uint8_t request_origin;
-	uint8_t reset_type;
+	__u8 request_origin;
+	__u8 reset_type;
 } __attribute__ ((packed));
 
 typedef enum {
@@ -279,88 +277,88 @@ typedef enum {
 } me_bios_path;
 
 typedef struct {
-	uint32_t       major_version  : 16;
-	uint32_t       minor_version  : 16;
-	uint32_t       hotfix_version : 16;
-	uint32_t       build_version  : 16;
+	__u32       major_version  : 16;
+	__u32       minor_version  : 16;
+	__u32       hotfix_version : 16;
+	__u32       build_version  : 16;
 } __attribute__ ((packed)) mbp_fw_version_name;
 
 typedef struct {
-	uint8_t        num_icc_profiles;
-	uint8_t        icc_profile_soft_strap;
-	uint8_t        icc_profile_index;
-	uint8_t        reserved;
-	uint32_t       register_lock_mask[3];
+	__u8        num_icc_profiles;
+	__u8        icc_profile_soft_strap;
+	__u8        icc_profile_index;
+	__u8        reserved;
+	__u32       register_lock_mask[3];
 } __attribute__ ((packed)) mbp_icc_profile;
 
 typedef struct {
-	uint32_t  full_net		: 1;
-	uint32_t  std_net		: 1;
-	uint32_t  manageability	: 1;
-	uint32_t  small_business	: 1;
-	uint32_t  l3manageability	: 1;
-	uint32_t  intel_at		: 1;
-	uint32_t  intel_cls		: 1;
-	uint32_t  reserved		: 3;
-	uint32_t  intel_mpc		: 1;
-	uint32_t  icc_over_clocking	: 1;
-	uint32_t  pavp		: 1;
-	uint32_t  reserved_1		: 4;
-	uint32_t  ipv6		: 1;
-	uint32_t  kvm		: 1;
-	uint32_t  och		: 1;
-	uint32_t  vlan		: 1;
-	uint32_t  tls		: 1;
-	uint32_t  reserved_4		: 1;
-	uint32_t  wlan		: 1;
-	uint32_t  reserved_5		: 8;
+	__u32  full_net		: 1;
+	__u32  std_net		: 1;
+	__u32  manageability	: 1;
+	__u32  small_business	: 1;
+	__u32  l3manageability	: 1;
+	__u32  intel_at		: 1;
+	__u32  intel_cls		: 1;
+	__u32  reserved		: 3;
+	__u32  intel_mpc		: 1;
+	__u32  icc_over_clocking	: 1;
+	__u32  pavp		: 1;
+	__u32  reserved_1		: 4;
+	__u32  ipv6		: 1;
+	__u32  kvm		: 1;
+	__u32  och		: 1;
+	__u32  vlan		: 1;
+	__u32  tls		: 1;
+	__u32  reserved_4		: 1;
+	__u32  wlan		: 1;
+	__u32  reserved_5		: 8;
 } __attribute__ ((packed)) mefwcaps_sku;
 
 typedef struct {
-	uint16_t  lock_state		     : 1;
-	uint16_t  authenticate_module     : 1;
-	uint16_t  s3authentication  	     : 1;
-	uint16_t  flash_wear_out          : 1;
-	uint16_t  flash_variable_security : 1;
-	uint16_t  wwan3gpresent	     : 1;
-	uint16_t  wwan3goob		     : 1;
-	uint16_t  reserved		     : 9;
+	__u16  lock_state		     : 1;
+	__u16  authenticate_module     : 1;
+	__u16  s3authentication  	     : 1;
+	__u16  flash_wear_out          : 1;
+	__u16  flash_variable_security : 1;
+	__u16  wwan3gpresent	     : 1;
+	__u16  wwan3goob		     : 1;
+	__u16  reserved		     : 9;
 } __attribute__ ((packed)) tdt_state_flag;
 
 typedef struct {
-	uint8_t           state;
-	uint8_t           last_theft_trigger;
+	__u8           state;
+	__u8           last_theft_trigger;
 	tdt_state_flag  flags;
 }  __attribute__ ((packed)) tdt_state_info;
 
 typedef struct {
-	uint32_t  platform_target_usage_type	 : 4;
-	uint32_t  platform_target_market_type : 2;
-	uint32_t  super_sku			 : 1;
-	uint32_t  reserved			 : 1;
-	uint32_t  intel_me_fw_image_type	 : 4;
-	uint32_t  platform_brand		 : 4;
-	uint32_t  reserved_1			 : 16;
+	__u32  platform_target_usage_type	 : 4;
+	__u32  platform_target_market_type : 2;
+	__u32  super_sku			 : 1;
+	__u32  reserved			 : 1;
+	__u32  intel_me_fw_image_type	 : 4;
+	__u32  platform_brand		 : 4;
+	__u32  reserved_1			 : 16;
 }  __attribute__ ((packed)) platform_type_rule_data;
 
 typedef struct {
 	mefwcaps_sku fw_capabilities;
-	uint8_t      available;
+	__u8      available;
 } mbp_fw_caps;
 
 typedef struct {
-	uint16_t        device_id;
-	uint16_t        fuse_test_flags;
-	uint32_t        umchid[4];
+	__u16        device_id;
+	__u16        fuse_test_flags;
+	__u32        umchid[4];
 }  __attribute__ ((packed)) mbp_rom_bist_data;
 
 typedef struct {
-	uint32_t        key[8];
+	__u32        key[8];
 } mbp_platform_key;
 
 typedef struct {
 	platform_type_rule_data rule_data;
-	uint8_t	          available;
+	__u8	          available;
 } mbp_plat_type;
 
 typedef struct {
@@ -371,45 +369,43 @@ typedef struct {
 	mbp_plat_type	    fw_plat_type;
 	mbp_icc_profile	    icc_profile;
 	tdt_state_info	    at_state;
-	uint32_t		    mfsintegrity;
+	__u32		    mfsintegrity;
 } me_bios_payload;
 
 typedef  struct {
-	uint32_t  mbp_size	 : 8;
-	uint32_t  num_entries : 8;
-	uint32_t  rsvd      	 : 16;
+	__u32  mbp_size	 : 8;
+	__u32  num_entries : 8;
+	__u32  rsvd      	 : 16;
 } __attribute__ ((packed)) mbp_header;
 
 typedef struct {
-	uint32_t  app_id  : 8;
-	uint32_t  item_id : 8;
-	uint32_t  length  : 8;
-	uint32_t  rsvd    : 8;
+	__u32  app_id  : 8;
+	__u32  item_id : 8;
+	__u32  length  : 8;
+	__u32  rsvd    : 8;
 }  __attribute__ ((packed)) mbp_item_header;
 
 struct me_fwcaps {
-	uint32_t id;
-	uint8_t length;
+	__u32 id;
+	__u8 length;
 	mefwcaps_sku caps_sku;
-	uint8_t reserved[3];
+	__u8 reserved[3];
 } __attribute__ ((packed));
 
 struct me_debug_mem {
-	uint32_t debug_phys;
-        uint32_t debug_size;
-        uint32_t me_phys;
-        uint32_t me_size;
+	__u32 debug_phys;
+        __u32 debug_size;
+        __u32 me_phys;
+        __u32 me_size;
 } __attribute__ ((packed));
 
-void intel_me_status(uint32_t hfs, uint32_t gmes);
-void mkhi_thermal(void);
-uint32_t intel_mei_setup(struct pci_dev *dev);
-void intel_mei_unmap(void);
-int mkhi_get_fwcaps(void);
-int mkhi_get_fw_version(void);
-int mkhi_debug_me_memory(void *addr);
-void mei_reset(void);
-void udelay(uint32_t usecs);
+void intel_me_status(struct pci_dev *dev, __u32 hfs, __u32 gmes);
+void mkhi_thermal(struct pci_dev *dev);
+__u32 intel_mei_setup(struct pci_dev *dev);
+int mkhi_get_fwcaps(struct pci_dev *dev);
+int mkhi_get_fw_version(struct pci_dev *dev);
+int mkhi_debug_me_memory(struct pci_dev *dev, void *addr);
+void mei_reset(struct pci_dev *dev);
 int intel_me_extend_valid(struct pci_dev *dev);
 
 #endif

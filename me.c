@@ -2,7 +2,7 @@
  * This file is part of the coreboot project.
  *
  * Copyright (C) 2011 The Chromium OS Authors. All rights reserved.
- * Copyright (C) 2013 Damien Zammit <damien@zamudio.com>
+ * Copyright (C) 2014 Damien Zammit <damien@zamaudio.com>
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -13,34 +13,18 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston,
- * MA 02110-1301 USA
  */
 
-#include <pci/pci.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <sys/io.h>
-#include <assert.h>
+#include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
 #include "me.h"
-#include "mmap.h"
 
-#define read32(addr, off) ( *((uint32_t *) (addr + off)) )
-#define write32(addr, off, val) ( *((uint32_t *) (addr + off)) = val)
+//#define read32(addr, off) ( *((__u32 *) (addr + off)) )
+//#define write32(addr, off, val) ( *((__u32 *) (addr + off)) = val)
 
-// FIXME: define this for old firmware only
+// FIXnotme: define this for old firmware only
 //#define OLDARC 1
-
-void udelay(uint32_t usecs)
-{
-	int i;
-	for(i = 0; i < usecs; i++)
-		inb(0x80);
-}
 
 /* Path that the BIOS should take based on ME state */
 /*
@@ -54,40 +38,32 @@ static const char *me_bios_path_values[] = {
 };
 */
 
-/* MMIO base address for MEI interface */
-static uint32_t mei_base_address;
-static uint8_t* mei_mmap;
-
 #if 1
 static void mei_dump(void *ptr, int dword, int offset, const char *type)
 {
-	struct mei_csr *csr;
+//	struct mei_csr *csr;
 
 
 	switch (offset) {
 	case MEI_H_CSR:
 	case MEI_ME_CSR_HA:
-		csr = ptr;
-/*		if (!csr) {
-		printf("%-9s[%02x] : ", type, offset);
-			printf("ERROR: 0x%08x\n", dword);
+/*		csr = ptr;
+		if (!csr) {
+			printk(KERN_INFO "notme: %-9s[%02x] : ERROR: 0x%08x\n", type, offset, dword);
 			break;
 		}
-		printf("%-9s[%02x] : ", type, offset);
-		printf("depth=%u read=%02u write=%02u ready=%u "
-		       "reset=%u intgen=%u intstatus=%u intenable=%u\n", csr->buffer_depth,
+		printk(KERN_INFO "notme: %-9s[%02x] : depth=%u read=%02u write=%02u ready=%u "
+		       "reset=%u intgen=%u intstatus=%u intenable=%u\n", type, offset, csr->buffer_depth,
 		       csr->buffer_read_ptr, csr->buffer_write_ptr,
 		       csr->ready, csr->reset, csr->interrupt_generate,
 		       csr->interrupt_status, csr->interrupt_enable);
 */		break;
 	case MEI_ME_CB_RW:
 	case MEI_H_CB_WW:
-		printf("%-9s[%02x] : ", type, offset);
-		printf("CB: 0x%08x\n", dword);
+		printk(KERN_INFO "notme: %-9s[%02x] : CB: 0x%08x\n", type, offset, dword);
 		break;
 	default:
-		printf("%-9s[%02x] : ", type, offset);
-		printf("0x%08x\n", offset);
+		printk(KERN_INFO "notme: %-9s[%02x] : 0x%08x\n", type, offset, dword);
 		break;
 	}
 }
@@ -99,103 +75,98 @@ static void mei_dump(void *ptr, int dword, int offset, const char *type)
  * ME/MEI access helpers using memcpy to avoid aliasing.
  */
 
-static inline void mei_read_dword_ptr(void *ptr, uint32_t offset)
+static inline void pci_write_dword_ptr(struct pci_dev *dev, void *ptr, __u32 offset)
 {
-	uint32_t dword = read32(mei_mmap, offset);
-	memcpy(ptr, &dword, sizeof(dword));
-	mei_dump(ptr, dword, offset, "READ");
-}
-
-static inline void mei_write_dword_ptr(void *ptr, uint32_t offset)
-{
-	uint32_t dword = 0;
+	__u32 dword = 0;
 	memcpy(&dword, ptr, sizeof(dword));
-	write32(mei_mmap, offset, dword);
-	mei_dump(ptr, dword, offset, "WRITE");
+	pci_write_config_dword(dev, offset, dword);
+	mei_dump(ptr, dword, offset, "PCI WRITE");
 }
 
-static inline void pci_read_dword_ptr(struct pci_dev *dev, void *ptr, uint32_t offset)
+static inline void pci_read_dword_ptr(struct pci_dev *dev, void *ptr, __u32 offset)
 {
-	uint32_t dword = pci_read_long(dev, offset);
+	__u32 dword;
+	pci_read_config_dword(dev, offset, &dword);
 	memcpy(ptr, &dword, sizeof(dword));
 	mei_dump(ptr, dword, offset, "PCI READ");
 }
 
-static inline void read_host_csr(struct mei_csr *csr)
+static inline void read_host_csr(struct pci_dev *dev, struct mei_csr *csr)
 {
-	mei_read_dword_ptr(csr, MEI_H_CSR);
+	pci_read_dword_ptr(dev, csr, MEI_H_CSR);
 }
 
-static inline void write_host_csr(struct mei_csr *csr)
+static inline void write_host_csr(struct pci_dev *dev, struct mei_csr *csr)
 {
-	mei_write_dword_ptr(csr, MEI_H_CSR);
+	pci_write_dword_ptr(dev, csr, MEI_H_CSR);
 }
 
-static inline void read_me_csr(struct mei_csr *csr)
+static inline void read_me_csr(struct pci_dev *dev, struct mei_csr *csr)
 {
-	mei_read_dword_ptr(csr, MEI_ME_CSR_HA);
+	pci_read_dword_ptr(dev, csr, MEI_ME_CSR_HA);
 }
 
-static inline void write_cb(uint32_t dword)
+static inline void write_cb(struct pci_dev *dev, __u32 dword)
 {
-	write32(mei_mmap, MEI_H_CB_WW, dword);
-	mei_dump(NULL, dword, MEI_H_CB_WW, "WRITE");
+	pci_write_dword_ptr(dev, &dword, MEI_H_CB_WW);
+	mei_dump(NULL, dword, MEI_H_CB_WW, "PCI WRITE");
 }
 
-static inline uint32_t read_cb(void)
+static inline __u32 read_cb(struct pci_dev *dev)
 {
-	uint32_t dword = read32(mei_mmap, MEI_ME_CB_RW);
-	mei_dump(NULL, dword, MEI_ME_CB_RW, "READ");
+	__u32 dword;
+	pci_read_dword_ptr(dev, &dword, MEI_ME_CB_RW);
+	mei_dump(NULL, dword, MEI_ME_CB_RW, "PCI READ");
 	return dword;
 }
 
 /* Wait for ME ready bit to be asserted */
-static int mei_wait_for_me_ready(void)
+static int mei_wait_for_me_ready(struct pci_dev *dev)
 {
 	struct mei_csr me;
 	unsigned try = ME_RETRY;
 
 	while (try--) {
-		read_me_csr(&me);
+		read_me_csr(dev, &me);
 		if (me.ready)
 			return 0;
 		udelay(ME_DELAY);
 	}
 
-	printf("ME: failed to become ready\n");
+	printk(KERN_INFO "notme: failed to become ready\n");
 	return -1;
 }
 
-void mei_reset(void)
+void mei_reset(struct pci_dev *dev)
 {
 	struct mei_csr host;
 
-	if (mei_wait_for_me_ready() < 0)
+	if (mei_wait_for_me_ready(dev) < 0)
 		return;
 
 	/* Reset host and ME circular buffers for next message */
-	read_host_csr(&host);
+	read_host_csr(dev, &host);
 	host.reset = 1;
 	host.interrupt_generate = 1;
-	write_host_csr(&host);
+	write_host_csr(dev, &host);
 
-	if (mei_wait_for_me_ready() < 0)
+	if (mei_wait_for_me_ready(dev) < 0)
 		return;
 
 	/* Re-init and indicate host is ready */
-	read_host_csr(&host);
+	read_host_csr(dev, &host);
 	host.interrupt_generate = 1;
 	host.ready = 1;
 	host.reset = 0;
-	write_host_csr(&host);
+	write_host_csr(dev, &host);
 }
 
-static int mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
+static int mei_send_msg(struct pci_dev *dev, struct mei_header *mei, struct mkhi_header *mkhi,
 			void *req_data)
 {
 	struct mei_csr host;
 	unsigned ndata, n;
-	uint32_t *data;
+	__u32 *data;
 
 	/* Number of dwords to write, ignoring MKHI */
 	ndata = (mei->length) >> 2;
@@ -204,7 +175,7 @@ static int mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	if (mei->length & 3)
 		ndata++;
 	if (!ndata) {
-		printf("ME: request does not include MKHI\n");
+		printk(KERN_INFO "notme: request does not include MKHI\n");
 		return -1;
 	}
 	ndata++; /* Add MEI header */
@@ -213,11 +184,11 @@ static int mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	 * Make sure there is still room left in the circular buffer.
 	 * Reset the buffer pointers if the requested message will not fit.
 	 */
-	read_host_csr(&host);
+	read_host_csr(dev, &host);
 	if ((host.buffer_depth - host.buffer_write_ptr) < ndata) {
-		printf("ME: circular buffer full, resetting...\n");
-		mei_reset();
-		read_host_csr(&host);
+		printk(KERN_INFO "notme: circular buffer full, resetting...\n");
+		mei_reset(dev);
+		read_host_csr(dev, &host);
 	}
 
 	/*
@@ -226,56 +197,56 @@ static int mei_send_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	 * will fit in the available circular buffer depth.
 	 */
 	if ((host.buffer_depth - host.buffer_write_ptr) < ndata) {
-		printf("ME: message (%u) too large for buffer (%u)\n",
+		printk(KERN_INFO "notme: message (%u) too large for buffer (%u)\n",
 		       ndata + 2, host.buffer_depth);
 		return -1;
 	}
 
 	/* Write MEI header */
-	mei_write_dword_ptr(mei, MEI_H_CB_WW);
+	pci_write_dword_ptr(dev, mei, MEI_H_CB_WW);
 	ndata--;
 
 	/* Write MKHI header */
-	mei_write_dword_ptr(mkhi, MEI_H_CB_WW);
+	pci_write_dword_ptr(dev, mkhi, MEI_H_CB_WW);
 	ndata--;
 
 	/* Write message data */
 	data = req_data;
 	for (n = 0; n < ndata; ++n)
-		write_cb(*data++);
+		write_cb(dev, *data++);
 
 	/* Generate interrupt to the ME */
-	read_host_csr(&host);
+	read_host_csr(dev, &host);
 	host.interrupt_generate = 1;
-	write_host_csr(&host);
+	write_host_csr(dev, &host);
 
 	/* Make sure ME is ready after sending request data */
-	return mei_wait_for_me_ready();
+	return mei_wait_for_me_ready(dev);
 }
 
-static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
-			void *rsp_data, uint32_t rsp_bytes)
+static int mei_recv_msg(struct pci_dev *dev, struct mei_header *mei, struct mkhi_header *mkhi,
+			void *rsp_data, __u32 rsp_bytes)
 {
 	struct mei_header mei_rsp;
 	struct mkhi_header mkhi_rsp;
 	struct mei_csr me, host;
 	unsigned ndata, n;
 	unsigned expected;
-	uint32_t *data;
+	__u32 *data;
 
 	/* Total number of dwords to read from circular buffer */
 	expected = (rsp_bytes + sizeof(mei_rsp) + sizeof(mkhi_rsp)) >> 2;
 	if (rsp_bytes & 3)
 		expected++;
 
-	//printf("expected u32 = %d\n", expected);
+	//printk(KERN_INFO "expected u32 = %d\n", expected);
 	/*
 	 * The interrupt status bit does not appear to indicate that the
 	 * message has actually been received.  Instead we wait until the
 	 * expected number of dwords are present in the circular buffer.
 	 */
 	for (n = ME_RETRY; n; --n) {
-		read_me_csr(&me);
+		read_me_csr(dev, &me);
 		if ((me.buffer_write_ptr - me.buffer_read_ptr) >= expected)
 		//if (me.interrupt_generate && !me.interrupt_status)
 		//if (me.interrupt_status)
@@ -283,15 +254,15 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 		udelay(ME_DELAY);
 	}
 	if (!n) {
-		printf("ME: timeout waiting for data: expected "
+		printk(KERN_INFO "notme: timeout waiting for data: expected "
 		       "%u, available %u\n", expected,
 		       me.buffer_write_ptr - me.buffer_read_ptr);
 		return -1;
 	}
 	/* Read and verify MEI response header from the ME */
-	mei_read_dword_ptr(&mei_rsp, MEI_ME_CB_RW);
+	pci_read_dword_ptr(dev, &mei_rsp, MEI_ME_CB_RW);
 	if (!mei_rsp.is_complete) {
-		printf("ME: response is not complete\n");
+		printk(KERN_INFO "notme: response is not complete\n");
 		return -1;
 	}
 
@@ -300,16 +271,16 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	if (mei_rsp.length & 3)
 		ndata++;
 	if (ndata != (expected - 1)) {  //XXX
-		printf("ME: response is missing data\n");
+		printk(KERN_INFO "notme: response is missing data\n");
 		//return -1;
 	}
 
 	/* Read and verify MKHI response header from the ME */
-	mei_read_dword_ptr(&mkhi_rsp, MEI_ME_CB_RW);
+	pci_read_dword_ptr(dev, &mkhi_rsp, MEI_ME_CB_RW);
 	if (!mkhi_rsp.is_response ||
 	    mkhi->group_id != mkhi_rsp.group_id ||
 	    mkhi->command != mkhi_rsp.command) {
-		printf("ME: invalid response, group %u ?= %u, "
+		printk(KERN_INFO "notme: invalid response, group %u ?= %u, "
 		       "command %u ?= %u, is_response %u\n", mkhi->group_id,
 		       mkhi_rsp.group_id, mkhi->command, mkhi_rsp.command,
 		       mkhi_rsp.is_response);
@@ -319,7 +290,7 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 
 	/* Make sure caller passed a buffer with enough space */
 	if (ndata != (rsp_bytes >> 2)) {
-		printf("ME: not enough room in response buffer: "
+		printk(KERN_INFO "notme: not enough room in response buffer: "
 		       "%u != %u\n", ndata, rsp_bytes >> 2);
 		//return -1;
 	}
@@ -327,23 +298,23 @@ static int mei_recv_msg(struct mei_header *mei, struct mkhi_header *mkhi,
 	/* Read response data from the circular buffer */
 	data = rsp_data;
 	for (n = 0; n < ndata; ++n)
-		*data++ = read_cb();
+		*data++ = read_cb(dev);
 
 	/* Tell the ME that we have consumed the response */
-	read_host_csr(&host);
+	read_host_csr(dev, &host);
 	host.interrupt_status = 1;
 	host.interrupt_generate = 1;
-	write_host_csr(&host);
+	write_host_csr(dev, &host);
 
-	return mei_wait_for_me_ready();
+	return mei_wait_for_me_ready(dev);
 }
 
-static inline int mei_sendrecv(struct mei_header *mei, struct mkhi_header *mkhi,
-			       void *req_data, void *rsp_data, uint32_t rsp_bytes)
+static inline int mei_sendrecv(struct pci_dev *dev, struct mei_header *mei, struct mkhi_header *mkhi,
+			       void *req_data, void *rsp_data, __u32 rsp_bytes)
 {
-	if (mei_send_msg(mei, mkhi, req_data) < 0)
+	if (mei_send_msg(dev, mei, mkhi, req_data) < 0)
 		return -1;
-	if (mei_recv_msg(mei, mkhi, rsp_data, rsp_bytes) < 0)
+	if (mei_recv_msg(dev, mei, mkhi, rsp_data, rsp_bytes) < 0)
 		return -1;
 	return 0;
 }
@@ -364,19 +335,19 @@ static int mkhi_end_of_post(void)
 	};
 
 	if (mei_sendrecv(&mei, &mkhi, NULL, NULL, 0) < 0) {
-		printf("ME: END OF POST message failed\n");
+		printk(KERN_INFO "notme: END OF POST message failed\n");
 		return -1;
 	}
 
-	printf("ME: END OF POST message successful\n");
+	printk(KERN_INFO "notme: END OF POST message successful\n");
 	return 0;
 }
 */
 
 /* Get ME firmware version */
-int mkhi_get_fw_version(void)
+int mkhi_get_fw_version(struct pci_dev *dev)
 {
-	uint32_t data = 0;
+	__u32 data = 0;
 	struct me_fw_version version = {0};
 	
 	struct mkhi_header mkhi = {
@@ -394,11 +365,11 @@ int mkhi_get_fw_version(void)
 
 #ifndef OLDARC
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &data, &version, sizeof(version) ) < 0) {
-		printf("ME: GET FW VERSION message failed\n");
+	if (mei_sendrecv(dev, &mei, &mkhi, &data, &version, sizeof(version) ) < 0) {
+		printk(KERN_INFO "notme: GET FW VERSION message failed\n");
 		return -1;
 	}
-	printf("ME: Firmware Version %u.%u.%u.%u (code) "
+	printk(KERN_INFO "notme: Firmware Version %u.%u.%u.%u (code) "
 	       "%u.%u.%u.%u (recovery) "
 	       "%u.%u.%u.%u (fitc)\n",
 	       version.code_major, version.code_minor,
@@ -409,11 +380,11 @@ int mkhi_get_fw_version(void)
 	       version.fitcbuildno, version.fitchotfix);
 #else
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &data, &version, 2*sizeof(uint32_t) ) < 0) {
-		printf("ME: GET FW VERSION message failed\n");
+	if (mei_sendrecv(dev, &mei, &mkhi, &data, &version, 2*sizeof(__u32) ) < 0) {
+		printk(KERN_INFO "notme: GET FW VERSION message failed\n");
 		return -1;
 	}
-	printf("ME: Firmware Version %u.%u (code)\n"
+	printk(KERN_INFO "notme: Firmware Version %u.%u (code)\n"
 	       version.code_major, version.code_minor);
 #endif
 	return 0;
@@ -421,28 +392,21 @@ int mkhi_get_fw_version(void)
 
 static inline void print_cap(const char *name, int state)
 {
-	printf("ME Capability: %-30s : %s\n",
+	printk(KERN_INFO "ME Capability: %-30s : %s\n",
 	       name, state ? "ON" : "OFF");
 }
 
 /* Get ME Firmware Capabilities */
-int mkhi_get_fwcaps(void)
+int mkhi_get_fwcaps(struct pci_dev *dev)
 {
 	struct {
-		uint32_t rule_id;
-		uint32_t rule_len;
-
+		__u32 rule_id;
+		__u32 rule_len;
 		struct me_fwcaps cap;
 	} fwcaps;
 
-	fwcaps.rule_id = 0;
-	fwcaps.rule_len = 0;
-	
-	struct mkhi_header mkhi = {
-		.group_id	= MKHI_GROUP_ID_FWCAPS,
-		.command	= MKHI_FWCAPS_GET_RULE,
-		.is_response	= 0,
-	};
+	struct mkhi_header mkhi;
+
 	struct mei_header mei = {
 		.is_complete	= 1,
 		.host_address	= MEI_HOST_ADDRESS,
@@ -450,9 +414,16 @@ int mkhi_get_fwcaps(void)
 		.length		= sizeof(mkhi) + sizeof(fwcaps.rule_id),
 	};
 
+	fwcaps.rule_id = 0;
+	fwcaps.rule_len = 0;
+	
+	mkhi.group_id	= MKHI_GROUP_ID_FWCAPS;
+	mkhi.command	= MKHI_FWCAPS_GET_RULE;
+	mkhi.is_response = 0;
+
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &fwcaps.rule_id, &fwcaps.cap, sizeof(fwcaps.cap)) < 0) {
-		printf("ME: GET FWCAPS message failed\n");
+	if (mei_sendrecv(dev, &mei, &mkhi, &fwcaps.rule_id, &fwcaps.cap, sizeof(fwcaps.cap)) < 0) {
+		printk(KERN_INFO "notme: GET FWCAPS message failed\n");
 		return -1;
 	}
 
@@ -479,7 +450,7 @@ int mkhi_get_fwcaps(void)
 }
 
 /* Tell ME to issue a global reset */
-uint32_t mkhi_global_reset(void)
+__u32 mkhi_global_reset(struct pci_dev *dev)
 {
 	struct me_global_reset reset = {
 		.request_origin	= GLOBAL_RESET_BIOS_POST,
@@ -496,16 +467,16 @@ uint32_t mkhi_global_reset(void)
 		.client_address	= MEI_ADDRESS_MKHI,
 	};
 
-	printf("ME: Requesting global reset\n");
+	printk(KERN_INFO "notme: Requesting global reset\n");
 
 	/* Send request and wait for response */
-	if (mei_sendrecv(&mei, &mkhi, &reset, NULL, 0) < 0) {
+	if (mei_sendrecv(dev, &mei, &mkhi, &reset, NULL, 0) < 0) {
 		/* No response means reset will happen shortly... */
 		asm("hlt");
 	}
 
 	/* If the ME responded it rejected the reset request */
-	printf("ME: Global Reset failed\n");
+	printk(KERN_INFO "notme: Global Reset failed\n");
 	return -1;
 }
 
@@ -530,23 +501,23 @@ void mkhi_thermal(void)
 		.client_address	= MEI_ADDRESS_THERMAL,
 	};
 
-	printf("ME: Sending thermal reporting params\n");
+	printk(KERN_INFO "notme: Sending thermal reporting params\n");
 
 	mei_sendrecv(&mei, &mkhi, &thermal, NULL, 0);
 }
 */
 
 /* Enable debug of internal ME memory */
-int mkhi_debug_me_memory(void *physaddr)
+int mkhi_debug_me_memory(struct pci_dev *dev, void *physaddr)
 {
-	uint32_t data = 0;
+	__u32 data = 0;
 
 	/* copy whole ME memory to a readable space */
 	struct me_debug_mem memory = {
 		.debug_phys = (uintptr_t)physaddr,  
-		.debug_size = 0x2000000,
-		.me_phys = 0x20000000,
-		.me_size = 0x2000000,
+		.debug_size = 0x1000000,
+		.me_phys = 0x1000000,
+		.me_size = 0x1000000,
 	};
 	struct mkhi_header mkhi = {
 		.group_id	= MKHI_GROUP_ID_GEN,
@@ -560,85 +531,84 @@ int mkhi_debug_me_memory(void *physaddr)
 		.client_address	= MEI_ADDRESS_MKHI,
 	};
 
-	printf("ME: Debug memory to 0x%zx ...", (size_t)physaddr);
-	if (mei_sendrecv(&mei, &mkhi, &memory, &data, 0) < 0) {
-		printf("failed\n");
+	printk(KERN_INFO "notme: Debug memory to 0x%zx ...", (size_t)physaddr);
+	if (mei_sendrecv(dev, &mei, &mkhi, &memory, &data, 0) < 0) {
+		printk(KERN_INFO "failed\n");
 		return -1;
 	} else {
-		printf("done\n");
+		printk(KERN_INFO "done\n");
 	}
 	return 0;
 }
 
 /* Prepare ME for MEI messages */
-uint32_t intel_mei_setup(struct pci_dev *dev)
+__u32 intel_mei_setup(struct pci_dev *dev)
 {
 	struct mei_csr host;
-	uint32_t reg32;
-	uint32_t pagerounded;
+	__u32 reg32, err;
+	__u8 myirq;
 
-	mei_base_address = dev->base_addr[0] & ~0xf;
-	pagerounded = mei_base_address & ~0xfff;
-	mei_mmap = map_physical(pagerounded, 0x2000) + mei_base_address - pagerounded;
+	err = pci_read_config_byte(dev, PCI_INTERRUPT_LINE, &myirq);
+	if (err) {
+		printk(KERN_INFO "notme: Cant read interrupt line #");
+	} else {
+		printk(KERN_INFO "notme: Disabling interrupt");
+		disable_irq(myirq);
+	}
 
 	/* Ensure Memory and Bus Master bits are set */
-	reg32 = pci_read_long(dev, PCI_COMMAND);
+	pci_read_config_dword(dev, PCI_COMMAND, &reg32);
 	reg32 |= PCI_COMMAND_MASTER | PCI_COMMAND_MEMORY;
-	pci_write_long(dev, PCI_COMMAND, reg32);
+	pci_write_config_dword(dev, PCI_COMMAND, reg32);
 
 	/* Clean up status for next message */
-	read_host_csr(&host);
+	read_host_csr(dev, &host);
 	host.interrupt_generate = 1;
 	host.ready = 1;
 	host.reset = 0;
-	write_host_csr(&host);
+	write_host_csr(dev, &host);
 
 	return 0;
-}
-
-void intel_mei_unmap(void)
-{
-	//munmap(mei_mmap, 0x2000);
 }
 
 /* Read the Extend register hash of ME firmware */
 int intel_me_extend_valid(struct pci_dev *dev)
 {
 	struct me_heres status;
-	uint32_t extend[8] = {0};
+	__u32 extend[8] = {0};
 	int i, count = 0;
 
 	pci_read_dword_ptr(dev, &status, PCI_ME_HERES);
 	if (!status.extend_feature_present) {
-		printf("ME: Extend Feature not present\n");
+		printk(KERN_INFO "notme: Extend Feature not present\n");
 		return -1;
 	}
 
 	if (!status.extend_reg_valid) {
-		printf("ME: Extend Register not valid\n");
+		printk(KERN_INFO "notme: Extend Register not valid\n");
 		return -1;
 	}
 
 	switch (status.extend_reg_algorithm) {
 	case PCI_ME_EXT_SHA1:
 		count = 5;
-		printf("ME: Extend SHA-1: ");
+		printk(KERN_INFO "notme: Extend SHA-1: ");
 		break;
 	case PCI_ME_EXT_SHA256:
 		count = 8;
-		printf("ME: Extend SHA-256: ");
+		printk(KERN_INFO "notme: Extend SHA-256: ");
 		break;
 	default:
-		printf("ME: Extend Algorithm %d unknown\n",
+		printk(KERN_INFO "notme: Extend Algorithm %d unknown\n",
 		       status.extend_reg_algorithm);
 		return -1;
 	}
 
 	for (i = 0; i < count; ++i) {
-		extend[i] = pci_read_long(dev, PCI_ME_HER(i));
-		printf("%08x", extend[i]);
+		pci_read_config_dword(dev, PCI_ME_HER(i), &extend[i]);
+		printk(KERN_INFO "%08x", extend[i]);
 	}
-	printf("\n");
+	printk(KERN_INFO "\n");
 
 	return 0;
 }
