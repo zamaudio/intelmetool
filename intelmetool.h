@@ -114,6 +114,7 @@
 	( (x) == PCI_DEVICE_ID_INTEL_ICH9M  ))
 
 // Definitely has ME and is very difficult to remove
+#define PCI_DEVICE_ID_INTEL_HM87		0x8c4b
 #define PCI_DEVICE_ID_INTEL_ICH10R		0x3a16
 #define PCI_DEVICE_ID_INTEL_3400_DESKTOP	0x3b00
 #define PCI_DEVICE_ID_INTEL_3400_MOBILE		0x3b01
@@ -225,6 +226,7 @@
 #define PCI_DEVICE_ID_INTEL_LEWISBURG_7		0xa1c7
 
 #define PCI_DEV_HAS_ME_DIFFICULT(x) ( \
+	( (x) == PCI_DEVICE_ID_INTEL_HM87 ) || \
 	( (x) == PCI_DEVICE_ID_INTEL_ICH10R ) || \
 	( (x) == PCI_DEVICE_ID_INTEL_3400_DESKTOP ) || \
 	( (x) == PCI_DEVICE_ID_INTEL_3400_MOBILE ) || \
